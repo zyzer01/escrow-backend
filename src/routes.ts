@@ -1,0 +1,17 @@
+import { Express } from "express";
+import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, updateUserHandler } from "./resources/users/user.controller";
+import { loginUserHandler, registerUserHandler } from "./resources/auth/auth.controller";
+import { authenticateToken, authorizeRole } from "./lib/middleware";
+
+function routes(app: Express) {
+    app.get('/api/users', authenticateToken, authorizeRole('admin'), getAllUsersHandler)
+    app.get('/api/users/:id', authenticateToken, getUserHandler)
+    app.post('/api/users', authenticateToken, authorizeRole('admin'), createUserHandler)
+    app.put('/api/users/:id', authenticateToken, updateUserHandler)
+    app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
+
+    app.post('/auth/register', registerUserHandler)
+    app.post('/auth/login', loginUserHandler)
+}
+
+export default routes;
