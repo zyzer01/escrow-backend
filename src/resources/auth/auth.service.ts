@@ -2,10 +2,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../users/user.model';
 import dotenv from 'dotenv'
+import { sendEmail } from '../../mail/mail.service';
+import { hashPassword } from '../../utils';
 
 dotenv.config()
 
-const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function registerUser(userData: IUser): Promise<IUser> {
@@ -17,9 +18,17 @@ export async function registerUser(userData: IUser): Promise<IUser> {
     throw new Error('User with this email or username already exists');
   }
 
-  const hashedPassword = await bcrypt.hash(userData.password, SALT_ROUNDS);
+  const hashedPassword = await hashPassword(userData.password);
   const newUser = new User({ ...userData, password: hashedPassword, role: userData.role || 'user' });
-  return newUser.save();
+  const savedUser = newUser.save();
+
+  await sendEmail({
+    to: userData.email,
+    subject: 'Welcome to Our Service!',
+    template: 'welcome',
+    params: { username: userData.username },
+  });
+  return savedUser
 }
 
 export async function loginUser(email: string, password: string): Promise<{ token: string, user: IUser }> {
@@ -35,12 +44,4 @@ export async function loginUser(email: string, password: string): Promise<{ toke
 
   const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
   return { token, user };
-}
-
-export function verifyToken(token: string): any {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch (error) {
-    throw new Error('Invalid token');
-  }
 }
