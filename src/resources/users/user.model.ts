@@ -13,6 +13,9 @@ export interface IUser extends Document {
   bets_participated: number;
   bets_witnessed: number;
   is_active: boolean;
+  isEmailVerified: boolean,
+  emailVerificationCode: number | null,
+  emailVerificationCodeExpiry: Date | null,
   created_at: Date;
   updated_at: Date;
 }
@@ -29,6 +32,9 @@ const UserSchema: Schema = new Schema({
   bets_participated: { type: Number, default: 0 },
   bets_witnessed: { type: Number, default: 0 },
   is_active: { type: Boolean, default: true },
+  isEmailVerified: {type: Boolean, default: false},
+  emailVerificationCode: {type: Number},
+  emailVerificationCodeExpiry: {type: Date},
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date },
 });

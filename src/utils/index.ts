@@ -1,7 +1,8 @@
-import { saltRounds } from "./config";
+import { saltRounds, verificationCodeExpiry } from "./config";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config()
 
@@ -13,6 +14,12 @@ export const generateOTP = (length = 4) =>
     ) + Math.pow(10, length - 1);
 
 export const hashPassword = (password: string) => bcrypt.hash(password, saltRounds)
+
+export const generateVerificationCode = (): string => crypto.randomBytes(3).toString('hex')
+
+export const calculateVerificationCodeExpiryTime = () => {
+    return new Date(Date.now() + verificationCodeExpiry);
+  };
 
 export function verifyToken(token: string): any {
     try {

@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { ISendMail } from '../utils/interface';
+import { generateVerificationCode } from '../utils';
 
 dotenv.config();
 
@@ -13,8 +14,6 @@ const SMTP_USERNAME = process.env.SMTP_USERNAME;
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD;
 const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME;
 const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL;
-
-console.log(SMTP_USERNAME);
 
 const transporter = nodemailer.createTransport({
     host: SMTP_HOST,

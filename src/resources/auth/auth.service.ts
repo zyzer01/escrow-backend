@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import User, { IUser } from '../users/user.model';
 import dotenv from 'dotenv'
 import { sendEmail } from '../../mail/mail.service';
-import { hashPassword } from '../../utils';
+import { calculateVerificationCodeExpiryTime, generateOTP, hashPassword } from '../../utils';
 
 dotenv.config()
 
@@ -19,22 +19,49 @@ export async function registerUser(userData: IUser): Promise<IUser> {
   }
 
   const hashedPassword = await hashPassword(userData.password);
-  const newUser = new User({ ...userData, password: hashedPassword, role: userData.role || 'user' });
+
+  const code = generateOTP();
+  const codeExpiry = calculateVerificationCodeExpiryTime
+
+  const newUser = new User({ ...userData, password: hashedPassword, role: userData.role || 'user', emailVerificationCode: code, emailVerificationCodeExpiry: codeExpiry });
   const savedUser = newUser.save();
 
   await sendEmail({
     to: userData.email,
     subject: 'Welcome to Our Service!',
-    template: 'welcome',
-    params: { username: userData.username },
+    template: 'confirm-email',
+    params: { username: userData.firstname, code: code },
   });
   return savedUser
 }
 
+export async function verifyEmail(email: string, code: number): Promise<void> {
+  const user: IUser | null = await User.findOne({email})
+  if(!user) {
+    throw new Error('User not found')
+  }
+
+  if (user.emailVerificationCodeExpiry && new Date() > user.emailVerificationCodeExpiry) {
+    throw new Error('Verification code has expired');
+  }
+  
+  if(user.emailVerificationCode != code) {
+    throw new Error('Invalid Verification Code')
+  }
+
+  user.isEmailVerified = true
+  user.emailVerificationCode = null;
+  user.emailVerificationCodeExpiry = null;
+}
+
 export async function loginUser(email: string, password: string): Promise<{ token: string, user: IUser }> {
-  const user = await User.findOne({ email });
+  const user: IUser | null = await User.findOne({ email });
   if (!user) {
     throw new Error('User not found');
+  }
+
+  if(!user.isEmailVerified) {
+    throw new Error('User is not verified. Please verify your email before logging in.');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
