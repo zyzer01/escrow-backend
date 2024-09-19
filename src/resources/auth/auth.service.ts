@@ -4,6 +4,7 @@ import User, { IUser } from '../users/user.model';
 import dotenv from 'dotenv'
 import { sendEmail } from '../../mail/mail.service';
 import { calculateVerificationCodeExpiryTime, generateOTP, generateVerificationCode, hashPassword } from '../../utils';
+import { StringConstants } from '../../common/strings';
 
 dotenv.config()
 
@@ -32,7 +33,7 @@ export async function registerUser(userData: IUser): Promise<IUser> {
 
   await sendEmail({
     to: userData.email,
-    subject: 'Confirm your email!',
+    subject: StringConstants.CONFIRM_EMAIL,
     template: 'confirm-email',
     params: { username: userData.firstname, code: code },
   });
@@ -50,12 +51,12 @@ export async function loginUser(email: string, password: string): Promise<{ toke
   }
 
   if(!user.isEmailVerified) {
-    throw new Error('User is not verified. Please verify your email before logging in.');
+    throw new Error(StringConstants.EMAIL_NOT_VERIFIED);
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    throw new Error('Invalid password');
+    throw new Error(StringConstants.INVALID_PASSWORD);
   }
 
   const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
@@ -70,7 +71,7 @@ export async function forgotPassword(email: string): Promise<void> {
   const user = await User.findOne({email})
 
   if(!user) {
-    throw new Error('User not found')
+    throw new Error(StringConstants.USER_NOT_FOUND)
   }
 
   const resetToken = generateVerificationCode();
@@ -84,7 +85,7 @@ export async function forgotPassword(email: string): Promise<void> {
   await sendEmail({
     to: user.email,
     subject: 'Reset your password',
-    template: 'reset-password',
+    template: 'forgot-password',
     params: { username: user.firstname, code: resetToken },
   });
 }
@@ -97,7 +98,7 @@ export async function resetPassword(resetToken: string, newPassword: string): Pr
   const user = await User.findOne({resetPasswordToken: resetToken, resetPasswordTokenExpiry: { $gt: new Date() }})
 
   if(!user) {
-    throw new Error('Invalid or expired reset token')
+    throw new Error(StringConstants.INVALID_EXPIRED_TOKEN)
   }
 
   const hashedPassword = hashPassword(newPassword)
@@ -123,15 +124,15 @@ export async function requestEmailChange(email: string): Promise<void> {
   const user = await User.findOne({email})
 
   if(!user) {
-    throw new Error('User not found')
+    throw new Error(StringConstants.USER_NOT_FOUND)
   }
 
   if(user.email == email) {
-    throw new Error('Email already in use')
+    throw new Error(StringConstants.EMAIL_ALREADY_IN_USE)
   }
 
   if(!user.isEmailVerified) {
-    throw new Error('Email is not verified')
+    throw new Error(StringConstants.EMAIL_NOT_VERIFIED)
   }
 
   const resetToken = generateVerificationCode();
@@ -158,7 +159,7 @@ export async function changeEmail(resetToken: string, newPassword: string): Prom
   const user = await User.findOne({changeEmailToken: resetToken, changeEmailTokenExpiry: { $gt: new Date() }})
 
   if(!user) {
-    throw new Error('Invalid or expired reset token')
+    throw new Error(StringConstants.INVALID_EXPIRED_TOKEN)
   }
 
   const hashedPassword = hashPassword(newPassword)
@@ -184,7 +185,11 @@ export async function verifyEmail(email: string, code: number): Promise<void> {
   const user = await User.findOne({emailVerificationCode: code, emailVerificationCodeExpiry: { $gt: new Date() }})
 
   if(!user) {
-    throw new Error('Invalid or expired Verification Code')
+    throw new Error(StringConstants.INVALID_EXPIRED_TOKEN)
+  }
+
+  if(user.isEmailVerified) {
+    throw new Error(StringConstants.EMAIL_ALREADY_VERIFIED)
   }
 
   user.isEmailVerified = true
@@ -209,11 +214,11 @@ export async function resendEmailVerificationCode(email: string): Promise<void> 
   const user = await User.findOne({ email });
 
   if (!user) {
-    throw new Error('User not found');
+    throw new Error(StringConstants.EMAIL_ALREADY_VERIFIED);
   }
 
-  if (user.isVerified) {
-    throw new Error('User is already verified');
+  if (user.isEmailVerified) {
+    throw new Error(StringConstants.EMAIL_ALREADY_VERIFIED);
   }
 
   const newVerificationCode = generateOTP();
