@@ -1,0 +1,18 @@
+import mongoose, { Schema, Document, Types } from 'mongoose';
+
+interface IBetInvitation extends Document {
+  betId: Types.ObjectId;
+  invitedUserId: Types.ObjectId;
+  status: 'pending' | 'accepted';
+}
+
+const BetInvitationSchema = new Schema<IBetInvitation>(
+  {
+    betId: { type: Schema.Types.ObjectId, ref: 'Bet', required: true },
+    invitedUserId: { type: Schema.Types.ObjectId, required: true },
+    status: { type: String, default: 'pending', enum: ['pending', 'accepted'] },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.models.BetInvitation || mongoose.model<IBetInvitation>('BetInvitation', BetInvitationSchema);

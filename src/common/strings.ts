@@ -9,5 +9,6 @@ export enum StringConstants {
   PASSWORD_RESET_SUCCESSFUL = "Password has been reset successfully.",
   SIGNUP_SUCCESSFUL = "Confirmation code sent to email.",
   USER_NOT_FOUND = "User not found",
+  BET_NOT_FOUND = "Bet not found"
 }
 

@@ -3,5 +3,5 @@
 [x] Forgot and Reset Password
 [x] Change Email
 [x] Complete Authentication
-[] Bet CRUD
+[x] Bet CRUD
 [] Implement notification service
