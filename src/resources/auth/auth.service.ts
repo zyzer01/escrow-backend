@@ -181,17 +181,10 @@ export async function changeEmail(resetToken: string, newPassword: string): Prom
 */
 
 export async function verifyEmail(email: string, code: number): Promise<void> {
-  const user = await User.findOne({email})
-  if(!user) {
-    throw new Error('User not found')
-  }
+  const user = await User.findOne({emailVerificationCode: code, emailVerificationCodeExpiry: { $gt: new Date() }})
 
-  if (user.emailVerificationCodeExpiry && new Date() > user.emailVerificationCodeExpiry) {
-    throw new Error('Verification code has expired');
-  }
-  
-  if(user.emailVerificationCode != code) {
-    throw new Error('Invalid Verification Code')
+  if(!user) {
+    throw new Error('Invalid or expired Verification Code')
   }
 
   user.isEmailVerified = true

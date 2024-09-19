@@ -2,6 +2,6 @@
 [x] Email Verification Code
 [x] Forgot and Reset Password
 [x] Change Email
-[] Complete Authentication
+[x] Complete Authentication
 [] Bet CRUD
 [] Implement notification service
