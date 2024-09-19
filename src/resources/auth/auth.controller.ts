@@ -30,8 +30,8 @@ export async function loginUserHandler(req: Request, res: Response) {
 
 export async function verifyEmailHandler(req: Request, res: Response) {
   try {
-    const {email, code} = req.body
-    await verifyEmail(email, code)
+    const {code} = req.body
+    await verifyEmail(code)
     res.status(200).json('Email Verified Successfully')
   } catch (error) {
     console.error(error)

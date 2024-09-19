@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
-interface IBetInvitation extends Document {
+export interface IBetInvitation extends Document {
   betId: Types.ObjectId;
   invitedUserId: Types.ObjectId;
   status: 'pending' | 'accepted';

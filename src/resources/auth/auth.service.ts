@@ -181,7 +181,7 @@ export async function changeEmail(resetToken: string, newPassword: string): Prom
   Verify User Email Address
 */
 
-export async function verifyEmail(email: string, code: number): Promise<void> {
+export async function verifyEmail(code: number): Promise<void> {
   const user = await User.findOne({emailVerificationCode: code, emailVerificationCodeExpiry: { $gt: new Date() }})
 
   if(!user) {

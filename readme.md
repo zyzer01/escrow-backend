@@ -4,4 +4,5 @@
 [x] Change Email
 [x] Complete Authentication
 [x] Bet CRUD
+[x] Bet Invitation
 [] Implement notification service
