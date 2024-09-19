@@ -13,9 +13,9 @@ function routes(app: Express) {
     app.post('/auth/register', registerUserHandler)
     app.post('/auth/login', loginUserHandler)
     app.post('/auth/verify-email', verifyEmailHandler)
-    app.post('/auth/resendEmailVerificationCode', authenticateToken, resendEmailVerificationCodeHandler)
+    app.post('/auth/resend-email-verificationCode', resendEmailVerificationCodeHandler)
     app.post('/auth/forgot-password', authenticateToken, forgotPasswordHandler)
-    app.post('/auth/reset-password', authenticateToken, resetPasswordHandler)
+    app.post('/auth/reset-password', resetPasswordHandler)
 }
 
 export default routes;

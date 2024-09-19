@@ -18,29 +18,29 @@ export interface IUser extends Document {
   emailVerificationCodeExpiry: Date | null,
   resetPasswordToken: string | null,
   resetPasswordTokenExpiry: Date | null,
-  created_at: Date;
-  updated_at: Date;
+  changeEmailToken: string | null,
+  changeEmailTokenExpiry: Date | null,
 }
 
 const UserSchema: Schema = new Schema({
-  username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  username: { type: String, required: true, unique: true, min: [3, 'Username cannot be less than 3 characters'] },
+  email: { type: String, required: true, unique: true, match: [/.+\@.+\..+/, 'Invalid email'] },
+  password: { type: String, required: true, min: [6, 'Password cannot be less than 6 characters'] },
   firstname: { type: String },
   lastname: { type: String },
   phone_number: { type: String },
   role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' }, 
   reputation_score: { type: Number, default: 0 },
-  bets_participated: { type: Number, default: 0 },
-  bets_witnessed: { type: Number, default: 0 },
+  bets_participated: { type: Number, default: 0, min: [0, 'Value cannot be less than 0'] },
+  bets_witnessed: { type: Number, default: 0, min: [0, 'Value cannot be less than 0'] },
   is_active: { type: Boolean, default: true },
   isEmailVerified: {type: Boolean, default: false},
   emailVerificationCode: {type: Number},
   emailVerificationCodeExpiry: {type: Date},
   resetPasswordToken: {type: String},
   resetPasswordTokenExpiry: {type: Date},
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date },
-});
+  changeEmailToken: {type: String},
+  changeEmailTokenExpiry: {type: Date},
+}, { timestamps: true });
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

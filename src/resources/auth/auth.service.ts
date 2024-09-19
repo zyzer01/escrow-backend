@@ -9,6 +9,10 @@ dotenv.config()
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
+/*
+  Register User
+*/
+
 export async function registerUser(userData: IUser): Promise<IUser> {
   const existingUser = await User.findOne({
     $or: [{ email: userData.email }, { username: userData.username }]
@@ -35,6 +39,10 @@ export async function registerUser(userData: IUser): Promise<IUser> {
   return savedUser
 }
 
+/*
+  Login User
+*/
+
 export async function loginUser(email: string, password: string): Promise<{ token: string, user: IUser }> {
   const user: IUser | null = await User.findOne({ email });
   if (!user) {
@@ -54,6 +62,10 @@ export async function loginUser(email: string, password: string): Promise<{ toke
   return { token, user };
 }
 
+/*
+  Forgot Password
+*/
+
 export async function forgotPassword(email: string): Promise<void> {
   const user = await User.findOne({email})
 
@@ -67,7 +79,7 @@ export async function forgotPassword(email: string): Promise<void> {
   user.resetPasswordToken = resetToken
   user.resetPasswordTokenExpiry = resetTokenExpiry
 
-  await user.save;
+  await user.save();
 
   await sendEmail({
     to: user.email,
@@ -77,23 +89,99 @@ export async function forgotPassword(email: string): Promise<void> {
   });
 }
 
+/*
+  Reset User Password
+*/
+
 export async function resetPassword(resetToken: string, newPassword: string): Promise<void> {
   const user = await User.findOne({resetPasswordToken: resetToken, resetPasswordTokenExpiry: { $gt: new Date() }})
 
   if(!user) {
-    throw new Error('Invalid or expired token')
+    throw new Error('Invalid or expired reset token')
   }
 
   const hashedPassword = hashPassword(newPassword)
   user.password = hashedPassword;
   user.resetPasswordToken = null
   user.resetPasswordTokenExpiry = null
+
   user.save()
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Password Changed Successfully',
+    template: 'changed-password',
+    params: { username: user.firstname },
+  });
 }
 
+/*
+  Request Change of Email Address
+*/
+
+export async function requestEmailChange(email: string): Promise<void> {
+  const user = await User.findOne({email})
+
+  if(!user) {
+    throw new Error('User not found')
+  }
+
+  if(user.email == email) {
+    throw new Error('Email already in use')
+  }
+
+  if(!user.isEmailVerified) {
+    throw new Error('Email is not verified')
+  }
+
+  const resetToken = generateVerificationCode();
+  const resetTokenExpiry = calculateVerificationCodeExpiryTime()
+
+  user.changeEmailToken = resetToken;
+  user.changeEmailTokenExpiry = resetTokenExpiry;
+
+  await user.save();
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Change Account Email',
+    template: 'email-change-request',
+    params: { username: user.firstname, code: resetToken },
+  });
+}
+
+/*
+  Change Email Address
+*/
+
+export async function changeEmail(resetToken: string, newPassword: string): Promise<void> {
+  const user = await User.findOne({changeEmailToken: resetToken, changeEmailTokenExpiry: { $gt: new Date() }})
+
+  if(!user) {
+    throw new Error('Invalid or expired reset token')
+  }
+
+  const hashedPassword = hashPassword(newPassword)
+  user.password = hashedPassword;
+  user.changeEmailToken = null
+  user.changeEmailTokenExpiry = null
+
+  user.save()
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Email Changed Successfully',
+    template: 'changed-password',
+    params: { username: user.firstname },
+  });
+}
+
+/*
+  Verify User Email Address
+*/
 
 export async function verifyEmail(email: string, code: number): Promise<void> {
-  const user: IUser | null = await User.findOne({email})
+  const user = await User.findOne({email})
   if(!user) {
     throw new Error('User not found')
   }
@@ -111,7 +199,18 @@ export async function verifyEmail(email: string, code: number): Promise<void> {
   user.emailVerificationCodeExpiry = null;
 
   user.save()
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Welcome to Escrow Bet',
+    template: 'welcome',
+    params: { username: user.firstname },
+  });
 }
+
+/*
+  Resend Email Verification Code
+*/
 
 export async function resendEmailVerificationCode(email: string): Promise<void> {
   const user = await User.findOne({ email });
@@ -127,8 +226,8 @@ export async function resendEmailVerificationCode(email: string): Promise<void> 
   const newVerificationCode = generateOTP();
   const newVerificationCodeExpiry = calculateVerificationCodeExpiryTime()
 
-  user.verificationCode = newVerificationCode;
-  user.verificationCodeExpiry = newVerificationCodeExpiry;
+  user.emailVerificationCode = newVerificationCode;
+  user.emailVerificationCodeExpiry = newVerificationCodeExpiry;
   await user.save();
 
   await sendEmail({

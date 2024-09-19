@@ -34,6 +34,7 @@ export async function verifyEmailHandler(req: Request, res: Response) {
     await verifyEmail(email, code)
     res.status(200).json('Email Verified Successfully')
   } catch (error) {
+    console.error(error)
     res.status(500).json({error: 'Internal server error'})
   }
 }
@@ -65,6 +66,7 @@ export async function resetPasswordHandler(req: Request, res: Response) {
     await resetPassword(resetToken, newPassword)
     res.status(200).json('Password Reset Successfully')
   } catch (error) {
+    console.error(error)
     res.status(500).json({error: 'Internal server error'})
   }
 }
