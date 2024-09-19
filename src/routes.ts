@@ -1,6 +1,6 @@
 import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, updateUserHandler } from "./resources/users/user.controller";
-import { loginUserHandler, registerUserHandler } from "./resources/auth/auth.controller";
+import { forgotPasswordHandler, loginUserHandler, registerUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware";
 
 function routes(app: Express) {
@@ -12,6 +12,10 @@ function routes(app: Express) {
 
     app.post('/auth/register', registerUserHandler)
     app.post('/auth/login', loginUserHandler)
+    app.post('/auth/verify-email', verifyEmailHandler)
+    app.post('/auth/resendEmailVerificationCode', authenticateToken, resendEmailVerificationCodeHandler)
+    app.post('/auth/forgot-password', authenticateToken, forgotPasswordHandler)
+    app.post('/auth/reset-password', authenticateToken, resetPasswordHandler)
 }
 
 export default routes;
