@@ -30,7 +30,7 @@ export async function registerUser(userData: IUser): Promise<IUser> {
   const codeExpiry = calculateVerificationCodeExpiryTime()
 
   const newUser = new User({ ...userData, password: hashedPassword, role: userData.role || 'user', emailVerificationCode: code, emailVerificationCodeExpiry: codeExpiry });
-  const savedUser = newUser.save();
+  const savedUser = await newUser.save();
 
   const newWallet = new Wallet({
     userId: savedUser._id,
@@ -40,12 +40,12 @@ export async function registerUser(userData: IUser): Promise<IUser> {
 
   await newWallet.save();
 
-  await sendEmail({
-    to: userData.email,
-    subject: StringConstants.CONFIRM_EMAIL,
-    template: 'confirm-email',
-    params: { username: userData.firstname, code: code },
-  });
+  // await sendEmail({
+  //   to: userData.email,
+  //   subject: StringConstants.CONFIRM_EMAIL,
+  //   template: 'confirm-email',
+  //   params: { username: userData.firstname, code: code },
+  // });
   return savedUser
 }
 

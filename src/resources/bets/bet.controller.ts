@@ -70,9 +70,9 @@ export async function deleteBetHandler(req: Request, res: Response): Promise<Res
 
 
 export async function acceptBetHandler(req: Request, res: Response): Promise<Response> {
-    const {invitationId, opponentStake} = req.body
+    const {invitationId, opponentStake, opponentPrediction} = req.body
     try {
-        const acceptance = await acceptBetInvitation(invitationId, opponentStake)
+        const acceptance = await acceptBetInvitation(invitationId, opponentStake, opponentPrediction)
         return res.status(200).json(acceptance)
     } catch (error) {
         console.error('Error accepting bet:', error);

@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface ITransaction extends Document {
   userId: Types.ObjectId;
   amount: number;
-  type: 'payout' | 'refund';
+  type: 'payout' | 'refund' | 'commission';
   description: string;
   betId: Types.ObjectId;
 }

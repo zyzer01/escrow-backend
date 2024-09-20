@@ -30,10 +30,8 @@ export async function addToSystemWallet(systemShare: number): Promise<void> {
     try {
       const systemWallet = await getOrCreateSystemWallet();
   
-      // Update the system wallet balance
       systemWallet.balance += systemShare;
   
-      // Add transaction to the system wallet's history
       systemWallet.transactionHistory.push({
         transactionType: 'revenue',
         amount: systemShare,

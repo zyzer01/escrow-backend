@@ -43,7 +43,7 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
     return bet;
 }
 
-export async function acceptBetInvitation(invitationId: string, opponentStake: number) {
+export async function acceptBetInvitation(invitationId: string, opponentStake: number, opponentPrediction: string) {
 
     const invitation = await BetInvitation.findById(invitationId).populate('betId');
 
@@ -57,6 +57,7 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
 
     const bet = invitation.betId;
     bet.opponentStake = opponentStake;
+    bet.predictions.opponentPrediction = opponentPrediction;
     bet.status = "accepted";
     await bet.save();
 

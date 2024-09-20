@@ -68,5 +68,13 @@ export async function addToUserWallet(userId: string, amount: number): Promise<v
   }
   userWallet.balance += amount;
 
+  const transaction = new WalletTransaction({
+    userId,
+    amount,
+    type: 'commission',
+    description: `Bet Commission`,
+  });
+  await transaction.save
+
   await userWallet.save();
 }

@@ -1,3 +1,4 @@
+import { systemCommissionPercentage, witnessCommissionPercentage } from '../../utils/config';
 import Bet from '../bets/models/bet.model';
 import { addToSystemWallet } from '../system-wallet/system-wallet.service';
 import { addToUserWallet, payoutFunds, refund } from '../wallet/wallet.service';
@@ -32,8 +33,8 @@ export async function lockFunds(lockFundsData: Partial<IEscrow>) {
 
 /**
  * Releases funds from escrow to the winner, distributes system fee and witness fee.
- * @param betId - The ID of the bet.
- * @param winnerId - The ID of the winner.
+ * @param betId - 
+ * @param winnerId -
  */
 export async function releaseFunds(betId: string, winnerId: string): Promise<void> {
     const escrow = await Escrow.findOne({ betId });
@@ -42,9 +43,9 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<voi
     }
 
     const totalStake = escrow.creatorStake + escrow.opponentStake;
-    const systemCommission = totalStake * 0.10; // 10% commission for the system
-    const witnessShare = totalStake * 0.05; // 5% share for witnesses
-    const winnerShare = totalStake - systemCommission - witnessShare; // Remaining amount for the winner
+    const systemCommission = totalStake * systemCommissionPercentage;
+    const witnessShare = totalStake * witnessCommissionPercentage;
+    const winnerShare = totalStake - systemCommission - witnessShare;
 
     await addToSystemWallet(systemCommission);
 

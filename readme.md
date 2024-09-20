@@ -9,4 +9,4 @@
 [x] Implement Escrow
 [x] Voting System
 [x] User Wallet System
-[] Implement notification service
+[x] Implement notification service
