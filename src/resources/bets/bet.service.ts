@@ -2,10 +2,8 @@ import { Types } from 'mongoose';
 import BetInvitation from './models/bet-invitation.model';
 import Bet, { IBet } from './models/bet.model'
 import Witness from './witnesses/witness.model';
-import { determineWinner, distributeToWitnesses, selectNeutralWitness } from './witnesses/witness.service';
-import { lockFunds } from '../escrow/escrow.service';
-import { payoutFunds } from '../wallet/wallet.service';
-import { addToSystemWallet } from '../system-wallet/system-wallet.service';
+import { lockFunds, releaseFunds } from '../escrow/escrow.service';
+import { selectNeutralWitness } from '../../utils';
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     if (designatedWitnesses.length < 2 || designatedWitnesses.length > 3) {
@@ -44,7 +42,6 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
 
     return bet;
 }
-
 
 export async function acceptBetInvitation(invitationId: string, opponentStake: number) {
 
@@ -86,12 +83,11 @@ export async function rejectBetInvitation(invitationId: string) {
 
 export async function finalizeBet(betId: string) {
 
-    const bet = await Bet.findById(betId);
+    const bet = await Bet.findOne({betId});
 
     if (!bet || bet.status !== 'accepted') {
         throw new Error('Invalid bet finalization')
     }
-
     await lockFunds({
         betId: bet._id,
         creatorId: bet.creatorId,
@@ -100,45 +96,32 @@ export async function finalizeBet(betId: string) {
         opponentStake: bet.opponentStake,
         status: 'locked'
     });
-
-    bet.status = 'active'
-    await bet.save()
 }
 
+/**
+ * Settles the bet by determining the winner, releasing funds from escrow, and closing the bet.
+ * @param betId - The ID of the bet to settle.
+ */
 export async function settleBet(betId: string) {
+    const bet = await Bet.findOne({betId});
 
-    const bet = await Bet.findById(betId);
     if (!bet || bet.status !== 'verified') {
-        throw new Error('Bet is not in a valid state to be settled.')
+        throw new Error('Bet is not in a valid state to be settled.');
     }
 
-    const winner = await determineWinner(betId);
-    if (!winner) {
-        throw new Error('Unable to determine a winner.')
+    if (!bet.winnerId) {
+        throw new Error('Winner not determined.');
     }
 
-    const winnerId = winner === 'creator' ? bet.creatorId : bet.opponentId;
+    const winnerId = bet.winnerId.toString(); 
 
-    const totalStake = (bet.creatorStake || 0) + (bet.opponentStake || 0);
+    console.log(winnerId)
 
-    // Deduct 10% for the system
-    const systemFee = totalStake * 0.10;
-    await addToSystemWallet(systemFee);
-
-    const payoutAmount = totalStake - systemFee;
-    
-    // Payout 5% to witnesses
-    const witnessFee = totalStake * 0.05;
-    await distributeToWitnesses(betId, witnessFee);
-    
-    await payoutFunds(winnerId.toString(), payoutAmount - witnessFee, betId.toString())
+    await releaseFunds(bet._id, winnerId);
 
     bet.status = 'closed';
-    bet.winnerId = winnerId;
     await bet.save();
-};
-
-
+}
 
 export async function getBets(): Promise<IBet[]> {
     return Bet.find()

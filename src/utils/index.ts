@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import User from "../resources/users/user.model";
 
 dotenv.config()
 
@@ -27,4 +28,13 @@ export function verifyToken(token: string): any {
     } catch (error) {
         throw new Error('Invalid token');
     }
+}
+
+export async function selectNeutralWitness() {
+    const eligibleUsers = await User.find({ isEligibleForNeutralWitness: true });
+    if (eligibleUsers.length === 0) {
+        throw new Error('No eligible neutral witnesses found.');
+    }
+    const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
+    return eligibleUsers[randomIndex];
 }

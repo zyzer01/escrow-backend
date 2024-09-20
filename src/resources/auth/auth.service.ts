@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import { sendEmail } from '../../mail/mail.service';
 import { calculateVerificationCodeExpiryTime, generateOTP, generateVerificationCode, hashPassword } from '../../utils';
 import { StringConstants } from '../../common/strings';
+import Wallet from '../wallet/models/wallet.model';
 
 dotenv.config()
 
@@ -30,6 +31,14 @@ export async function registerUser(userData: IUser): Promise<IUser> {
 
   const newUser = new User({ ...userData, password: hashedPassword, role: userData.role || 'user', emailVerificationCode: code, emailVerificationCodeExpiry: codeExpiry });
   const savedUser = newUser.save();
+
+  const newWallet = new Wallet({
+    userId: savedUser._id,
+    balance: 0,
+    transactionHistory: [],
+  });
+
+  await newWallet.save();
 
   await sendEmail({
     to: userData.email,

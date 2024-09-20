@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { lockFunds, refundFunds, releaseFunds } from "./escrow.service"
+import { getTotalStakes, lockFunds, refundFunds, releaseFunds } from "./escrow.service"
 import Bet from "../bets/models/bet.model";
 
 export async function lockFundsHandler(req: Request, res: Response) {
@@ -12,7 +12,7 @@ export async function lockFundsHandler(req: Request, res: Response) {
     }
 }
 
-export const releaseFundsHandler = async (req: Request, res: Response) => {
+export async function releaseFundsHandler(req: Request, res: Response) {
     const { betId, winnerId } = req.body;
   
     try {
@@ -33,7 +33,16 @@ export const releaseFundsHandler = async (req: Request, res: Response) => {
     }
   };
 
-
+  export async function getTotalStakesHandler(req: Request, res: Response) {
+    const { betId } = req.body;
+  
+    try {
+        const totalStakes = await getTotalStakes(betId);
+        res.json({ totalStakes });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+  };
 
 
 export const cancelBet = async (req: Request, res: Response) => {

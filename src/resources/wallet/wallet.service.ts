@@ -10,19 +10,15 @@ import WalletTransaction from './models/wallet-transaction.model';
  */
 export async function payoutFunds (userId: string, amount: number, betId: string): Promise<void> {
   try {
-    // Fetch user's wallet
     let wallet = await Wallet.findOne({ userId });
 
-    // If wallet does not exist, create one
     if (!wallet) {
       wallet = new Wallet({ userId, balance: 0 });
     }
 
-    // Update the wallet balance
     wallet.balance += amount;
     await wallet.save();
 
-    // Log the transaction
     const transaction = new WalletTransaction({
       userId,
       amount,
@@ -37,3 +33,40 @@ export async function payoutFunds (userId: string, amount: number, betId: string
   }
 };
 
+
+/**
+ * Refund funds to a user's wallet.
+ * @param userId - The ID of the user receiving the refund.
+ * @param amount - The amount to be refunded.
+ */
+export async function refund(userId: string, amount: number, betId: string): Promise<void> {
+  const userWallet = await Wallet.findOne({ userId });
+
+  if (!userWallet) {
+      throw new Error('User wallet not found.');
+  }
+
+  userWallet.balance += amount;
+  const transaction = new WalletTransaction({
+    userId,
+    amount,
+    type: 'refund',
+    description: `Refund from Bet ID: ${betId}`,
+    betId
+  });
+  await transaction.save();
+
+  await userWallet.save();
+}
+
+
+export async function addToUserWallet(userId: string, amount: number): Promise<void> {
+  const userWallet = await Wallet.findOne({ userId });
+
+  if (!userWallet) {
+      throw new Error('User wallet not found.');
+  }
+  userWallet.balance += amount;
+
+  await userWallet.save();
+}

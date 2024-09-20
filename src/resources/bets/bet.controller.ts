@@ -99,7 +99,7 @@ export async function finalizeBetHandler(req: Request, res: Response): Promise<R
         return res.status(200).json(finalized)
     } catch (error) {
         console.error('Error finalizing bet:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ message: 'Internal server error', error });
     }
 }
 

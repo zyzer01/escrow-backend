@@ -1,5 +1,5 @@
 import User from "../../users/user.model";
-import { payoutFunds } from "../../wallet/wallet.service";
+import { addToUserWallet, payoutFunds } from "../../wallet/wallet.service";
 import Bet from "../models/bet.model";
 import Witness from './witness.model'; // Assuming the Witness model is in a file named models/Witness.ts
 
@@ -62,6 +62,8 @@ export async function castVote(betId: string, witnessId: string, vote: string) {
     witness.vote = vote;
     witness.status = 'accepted';
     await witness.save();
+
+    return vote
 }
 
 /**
@@ -111,32 +113,4 @@ export async function determineWinner(betId: string): Promise<string | null> {
     }
 
     return winner;
-}
-
-/**
- * distributes funds/share of bet outcome to witnesses.
- */
-
-export const distributeToWitnesses = async (betId: string, witnessFee: number) => {
-    const witnesses = await Witness.find({ betId, status: 'accepted' });
-
-    const individualPayout = witnessFee / witnesses.length;
-
-    for (const witness of witnesses) {
-        await payoutFunds(witness.userId, individualPayout, betId);
-    }
-
-    return;
-};
-
-/**
- * Select neutral witness from a pool of eligible user.
- */
-export async function selectNeutralWitness() {
-    const eligibleUsers = await User.find({ isEligibleForNeutralWitness: true });
-    if (eligibleUsers.length === 0) {
-        throw new Error('No eligible neutral witnesses found.');
-    }
-    const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
-    return eligibleUsers[randomIndex];
 }
