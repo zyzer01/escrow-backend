@@ -9,6 +9,7 @@ export interface IBet extends Document {
   opponentStake?: number;
   deadline: Date;
   status: 'pending' | 'active' | 'verified' | 'closed' |'disputed';
+  witnesses: Types.ObjectId[];
 }
 
 const BetSchema: Schema = new Schema (
@@ -21,6 +22,7 @@ const BetSchema: Schema = new Schema (
     opponentStake: { type: Number },
     deadline: {type: Date},
     status: { type: String, required: true, enum: ['pending', 'active', 'verified', 'closed', 'disputed'], default: 'pending' },
+    witnesses: [{ type: Schema.Types.ObjectId, ref: 'Witness' }],
   },
   { timestamps: true }
 );

@@ -1,18 +1,19 @@
 import { Request, Response } from "express";
-import { acceptBetInvitation, createBet, deleteBet, getBet, getBets, updateBet } from "./bet.service"
+import { acceptBetInvitation, createBet, deleteBet, getBet, getBets, rejectBetInvitation, updateBet } from "./bet.service"
 import { StringConstants } from '../../common/strings';
 
 
 export async function createBetHandler(req: Request, res: Response) {
-    const betData = req.body
+    const { designatedWitnesses, ...betData } = req.body;
+  
     try {
-        const bet = createBet(betData)
-        res.status(201).json(bet)
+      const bet = await createBet(betData, designatedWitnesses);
+      res.status(201).json(bet);
     } catch (error) {
-        res.status(500).json({error: 'Failed to create bet'})
+      console.error('Error creating bet:', error);
+      res.status(500).json({ error: 'Failed to create bet' });
     }
-}
-
+  }
 export async function getBetsHandler(req: Request, res: Response) {
     try {
         const bets = await getBets()
@@ -75,6 +76,17 @@ export async function acceptBetHandler(req: Request, res: Response): Promise<Res
         return res.status(200).json(acceptance)
     } catch (error) {
         console.error('Error accepting bet:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+export async function rejectBetHandler(req: Request, res: Response): Promise<Response> {
+    const {invitationId} = req.body
+    try {
+        const rejection = await rejectBetInvitation(invitationId)
+        return res.status(200).json(rejection)
+    } catch (error) {
+        console.error('Error rejecting bet:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 }
