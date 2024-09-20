@@ -3,7 +3,7 @@ import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandle
 import { forgotPasswordHandler, loginUserHandler, registerUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware";
 import { acceptBetHandler, createBetHandler, deleteBetHandler, getBetHandler, getBetsHandler, rejectBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
-import { witnessAcceptBetHandler, witnessRecuseBetHandler } from "./resources/bets/witnesses/witness.controller";
+import { castVoteHandler, determineWinnerHandler, witnessAcceptBetHandler, witnessRecuseBetHandler } from "./resources/bets/witnesses/witness.controller";
 
 function routes(app: Express) {
     app.get('/api/users', authenticateToken, authorizeRole('admin'), getAllUsersHandler)
@@ -29,6 +29,8 @@ function routes(app: Express) {
 
     app.post('/api/bets/witness/accept', witnessAcceptBetHandler)
     app.post('/api/bets/witness/recuse', witnessRecuseBetHandler)
+    app.post('/api/bets/witness/vote', castVoteHandler)
+    app.post('/api/bets/witness/determine-winner', determineWinnerHandler)
     
 }
 

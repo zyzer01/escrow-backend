@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { acceptBet, castVote, determineWinner, distributeToWitnesses, recuseBet } from "./witness.service";
+import { acceptBet, castVote, determineWinner, distributeToWitnesses, recuseBet, selectNeutralWitness } from "./witness.service";
 
 export async function witnessAcceptBetHandler(req: Request, res: Response): Promise<Response> {
     const {witnessId} = req.body
@@ -54,12 +54,23 @@ export async function determineWinnerHandler(req: Request, res: Response) {
 
 export async function distributeToWitnessesHandler(req: Request, res: Response) {
     const {betId, witnessFee} = req.body
-    
+
     try {
         const vote = await distributeToWitnesses(betId, witnessFee)
         return res.status(200).json(vote)
     } catch (error) {
         console.error('Error distributing funds to witnesses::', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+
+export async function assignNeutralWitnessHandler(req: Request, res: Response) {
+    try {
+        const neutralWitness = await selectNeutralWitness()
+        return res.status(200).json(neutralWitness)
+    } catch (error) {
+        console.error('Error assigning neutral witness:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 }

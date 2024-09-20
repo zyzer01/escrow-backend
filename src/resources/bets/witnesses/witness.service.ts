@@ -1,6 +1,11 @@
-import User, { IUser } from "../../users/user.model";
+import User from "../../users/user.model";
 import { payoutFunds } from "../../wallet/wallet.service";
+import Bet from "../models/bet.model";
 import Witness from './witness.model'; // Assuming the Witness model is in a file named models/Witness.ts
+
+/**
+ * Accepts witness role for bet
+ */
 
 export async function acceptBet(witnessId: string): Promise<Response> {
 
@@ -20,6 +25,10 @@ export async function acceptBet(witnessId: string): Promise<Response> {
     return witness
 }
 
+/**
+ * Steps user down as a witness
+ */
+
 export async function recuseBet(witnessId: string): Promise<Response> {
 
     const witness = await Witness.findById(witnessId);
@@ -38,21 +47,27 @@ export async function recuseBet(witnessId: string): Promise<Response> {
     return witness
 }
 
+/**
+ * Casts vote for betters
+ */
 
 export async function castVote(betId: string, witnessId: string, vote: string) {
 
     const witness = await Witness.findOne({ betId, userId: witnessId });
 
     if (!witness || witness.status !== 'accepted') {
-        throw new Error('Witness is not eligible to vote or has already recused.')
+        throw new Error('Witness is not eligible to vote or has already been recused.')
     }
 
     witness.vote = vote;
     witness.status = 'accepted';
     await witness.save();
-
 }
 
+/**
+ * Determines winner from the vote outcome
+ * @returns Promise<string | null>
+ */
 
 export async function determineWinner(betId: string): Promise<string | null> {
     const witnesses = await Witness.find({ betId, status: 'accepted' });
@@ -71,14 +86,36 @@ export async function determineWinner(betId: string): Promise<string | null> {
         }
     });
 
+    let winner: string | null = null;
+
     if (voteCount.creator > voteCount.opponent) {
-        return 'creator';
+        winner = 'creator';
     } else if (voteCount.opponent > voteCount.creator) {
-        return 'opponent';
-    } else {
-        return null;
+        winner = 'opponent';
     }
-};
+
+    if (winner) {
+        const bet = await Bet.findById(betId);
+        if (!bet) {
+            throw new Error('Bet not found.');
+        }
+
+        if (winner === 'creator') {
+            bet.winnerId = bet.creatorId;
+        } else if (winner === 'opponent') {
+            bet.winnerId = bet.opponentId;
+        }
+
+        bet.status = 'verified';
+        await bet.save();
+    }
+
+    return winner;
+}
+
+/**
+ * distributes funds/share of bet outcome to witnesses.
+ */
 
 export const distributeToWitnesses = async (betId: string, witnessFee: number) => {
     const witnesses = await Witness.find({ betId, status: 'accepted' });
@@ -92,6 +129,9 @@ export const distributeToWitnesses = async (betId: string, witnessFee: number) =
     return;
 };
 
+/**
+ * Select neutral witness from a pool of eligible user.
+ */
 export async function selectNeutralWitness() {
     const eligibleUsers = await User.find({ isEligibleForNeutralWitness: true });
     if (eligibleUsers.length === 0) {
@@ -100,4 +140,3 @@ export async function selectNeutralWitness() {
     const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
     return eligibleUsers[randomIndex];
 }
-

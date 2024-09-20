@@ -1,5 +1,5 @@
 import Wallet from './models/wallet.model';
-import Transaction from './models/transaction.model';
+import WalletTransaction from './models/wallet-transaction.model';
 
 /**
  * Payout funds to a user's wallet
@@ -23,7 +23,7 @@ export async function payoutFunds (userId: string, amount: number, betId: string
     await wallet.save();
 
     // Log the transaction
-    const transaction = new Transaction({
+    const transaction = new WalletTransaction({
       userId,
       amount,
       type: 'payout',

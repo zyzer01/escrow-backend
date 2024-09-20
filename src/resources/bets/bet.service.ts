@@ -7,7 +7,6 @@ import { lockFunds } from '../escrow/escrow.service';
 import { payoutFunds } from '../wallet/wallet.service';
 import { addToSystemWallet } from '../system-wallet/system-wallet.service';
 
-
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     if (designatedWitnesses.length < 2 || designatedWitnesses.length > 3) {
         throw new Error('You must designate between 2 and 3 witnesses.');
