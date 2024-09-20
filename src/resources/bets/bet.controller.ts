@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { acceptBetInvitation, createBet, deleteBet, finalizeBet, getBet, getBets, rejectBetInvitation, updateBet } from "./bet.service"
+import { acceptBetInvitation, createBet, deleteBet, finalizeBet, getBet, getBets, rejectBetInvitation, settleBet, updateBet } from "./bet.service"
 import { StringConstants } from '../../common/strings';
 
 
@@ -102,3 +102,15 @@ export async function finalizeBetHandler(req: Request, res: Response): Promise<R
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 }
+
+export async function settleBetHandler(req: Request, res: Response): Promise<Response> {
+    const {betId} = req.params
+    try {
+        const settled = await settleBet(betId)
+        return res.status(200).json(settled)
+    } catch (error) {
+        console.error('Error settling bet:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+

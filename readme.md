@@ -7,5 +7,6 @@
 [x] Bet Invitation
 [x] Witness
 [x] Implement Escrow
-[] User Wallet
+[x] Voting System
+[x] User Wallet System
 [] Implement notification service

@@ -2,8 +2,10 @@ import { Types } from 'mongoose';
 import BetInvitation from './models/bet-invitation.model';
 import Bet, { IBet } from './models/bet.model'
 import Witness from './witnesses/witness.model';
-import { selectNeutralWitness } from './witnesses/witness.service';
+import { determineWinner, distributeToWitnesses, selectNeutralWitness } from './witnesses/witness.service';
 import { lockFunds } from '../escrow/escrow.service';
+import { payoutFunds } from '../wallet/wallet.service';
+import { addToSystemWallet } from '../system-wallet/system-wallet.service';
 
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
@@ -103,6 +105,40 @@ export async function finalizeBet(betId: string) {
     bet.status = 'active'
     await bet.save()
 }
+
+export async function settleBet(betId: string) {
+
+    const bet = await Bet.findById(betId);
+    if (!bet || bet.status !== 'verified') {
+        throw new Error('Bet is not in a valid state to be settled.')
+    }
+
+    const winner = await determineWinner(betId);
+    if (!winner) {
+        throw new Error('Unable to determine a winner.')
+    }
+
+    const winnerId = winner === 'creator' ? bet.creatorId : bet.opponentId;
+
+    const totalStake = (bet.creatorStake || 0) + (bet.opponentStake || 0);
+
+    // Deduct 10% for the system
+    const systemFee = totalStake * 0.10;
+    await addToSystemWallet(systemFee);
+
+    const payoutAmount = totalStake - systemFee;
+    
+    // Payout 5% to witnesses
+    const witnessFee = totalStake * 0.05;
+    await distributeToWitnesses(betId, witnessFee);
+    
+    await payoutFunds(winnerId.toString(), payoutAmount - witnessFee, betId.toString())
+
+    bet.status = 'closed';
+    bet.winnerId = winnerId;
+    await bet.save();
+};
+
 
 
 export async function getBets(): Promise<IBet[]> {

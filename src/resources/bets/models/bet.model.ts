@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface IBet extends Document {
   creatorId: Types.ObjectId; 
   opponentId?: Types.ObjectId;
+  winnerId: Types.ObjectId
   title: string;
   description: string;
   creatorStake: number;
@@ -16,6 +17,7 @@ const BetSchema: Schema = new Schema (
   {
     creatorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     opponentId: { type: Schema.Types.ObjectId, ref: 'User' },
+    winnerId: { type: Schema.Types.ObjectId, ref: 'User' },
     title: { type: String, required: true },
     description: { type: String },
     creatorStake: { type: Number, required: true },
