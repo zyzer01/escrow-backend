@@ -41,7 +41,6 @@ export async function recuseBet(witnessId: string): Promise<Response> {
 
 
 export async function selectNeutralWitness() {
-    // Select a random neutral witness from the pool of eligible users
     const eligibleUsers = await User.find({ isEligibleForNeutralWitness: true });
     if (eligibleUsers.length === 0) {
       throw new Error('No eligible neutral witnesses found.');

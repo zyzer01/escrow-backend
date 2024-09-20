@@ -5,5 +5,7 @@
 [x] Complete Authentication
 [x] Bet CRUD
 [x] Bet Invitation
-[x] Witness 
+[x] Witness
+[x] Implement Escrow
+[] User Wallet
 [] Implement notification service

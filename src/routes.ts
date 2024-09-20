@@ -28,7 +28,7 @@ function routes(app: Express) {
     app.post('/api/bets/reject', rejectBetHandler)
 
     app.post('/api/bets/witness/accept', witnessAcceptBetHandler)
-    app.post('/api/bets/witness/reject', witnessRecuseBetHandler)
+    app.post('/api/bets/witness/recuse', witnessRecuseBetHandler)
     
 }
 
