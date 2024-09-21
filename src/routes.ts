@@ -5,6 +5,14 @@ import { authenticateToken, authorizeRole } from "./lib/middleware";
 import { acceptBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, witnessAcceptBetHandler, witnessRecuseBetHandler } from "./resources/bets/witnesses/witness.controller";
 import { getTotalStakesHandler } from "./resources/escrow/escrow.controller";
+import rateLimit from 'express-rate-limit';
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: 'Too many login attempts, please try again after 15 minutes',
+});
+
 
 function routes(app: Express) {
     app.get('/api/users', authenticateToken, authorizeRole('admin'), getAllUsersHandler)
@@ -14,7 +22,7 @@ function routes(app: Express) {
     app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
 
     app.post('/auth/register', registerUserHandler)
-    app.post('/auth/login', loginUserHandler)
+    app.post('/auth/login', authLimiter, loginUserHandler)
     app.post('/auth/verify-email', verifyEmailHandler)
     app.post('/auth/resend-email-verificationCode', resendEmailVerificationCodeHandler)
     app.post('/auth/forgot-password', forgotPasswordHandler)
@@ -30,8 +38,8 @@ function routes(app: Express) {
     app.post('/api/bets/engage/:id', engageBetHandler)
     app.post('/api/bets/settle/:id', settleBetHandler)
 
-    app.post('/api/bets/witness/accept', witnessAcceptBetHandler)
-    app.post('/api/bets/witness/recuse', witnessRecuseBetHandler)
+    app.post('/api/bets/witness/accept/:id', witnessAcceptBetHandler)
+    app.post('/api/bets/witness/recuse/:id', witnessRecuseBetHandler)
     app.post('/api/bets/witness/vote', castVoteHandler)
     app.post('/api/bets/witness/determine-winner', determineWinnerHandler)
 

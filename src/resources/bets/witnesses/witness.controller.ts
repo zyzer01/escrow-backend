@@ -3,10 +3,10 @@ import { acceptBet, castVote, determineWinner, recuseBet } from "./witness.servi
 import { selectNeutralWitness } from "../../../utils";
 
 export async function witnessAcceptBetHandler(req: Request, res: Response): Promise<Response> {
-    const {witnessId} = req.body
+    const { id } = req.params
 
     try {
-        const acceptance = await acceptBet(witnessId)
+        const acceptance = await acceptBet(id)
         return res.status(200).json(acceptance)
     } catch (error) {
         console.error('Error accepting bet:', error);
@@ -15,10 +15,10 @@ export async function witnessAcceptBetHandler(req: Request, res: Response): Prom
 }
 
 export async function witnessRecuseBetHandler(req: Request, res: Response): Promise<Response> {
-    const {witnessId} = req.body
+    const { id } = req.params
 
     try {
-        const recusal = await recuseBet(witnessId)
+        const recusal = await recuseBet(id)
         return res.status(200).json(recusal)
     } catch (error) {
         console.error('Error recusing bet:', error);
@@ -28,7 +28,7 @@ export async function witnessRecuseBetHandler(req: Request, res: Response): Prom
 
 
 export async function castVoteHandler(req: Request, res: Response) {
-    const {betId, witnessId, vote} = req.body
+    const { betId, witnessId, vote } = req.body
 
     try {
         const voteCount = await castVote(betId, witnessId, vote)
@@ -41,10 +41,10 @@ export async function castVoteHandler(req: Request, res: Response) {
 
 
 export async function determineWinnerHandler(req: Request, res: Response) {
-    const {betId} = req.body
+    const { id } = req.params
 
     try {
-        const vote = await determineWinner(betId)
+        const vote = await determineWinner(id)
         return res.status(200).json(vote)
     } catch (error) {
         console.error('Error determining winner:', error);

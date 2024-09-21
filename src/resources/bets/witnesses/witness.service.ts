@@ -1,4 +1,3 @@
-import User from "../../users/user.model";
 import { addToUserWallet, payoutFunds } from "../../wallet/wallet.service";
 import Bet from "../models/bet.model";
 import Witness from './witness.model'; // Assuming the Witness model is in a file named models/Witness.ts

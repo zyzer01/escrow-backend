@@ -21,7 +21,7 @@ export async function registerUser(userData: IUser): Promise<IUser> {
   });
 
   if (existingUser) {
-    throw new Error('User with this email or username already exists');
+    throw new Error('email or username already exists');
   }
 
   const hashedPassword = await hashPassword(userData.password);
@@ -56,11 +56,7 @@ export async function registerUser(userData: IUser): Promise<IUser> {
 export async function loginUser(email: string, password: string): Promise<{ token: string, user: IUser }> {
   const user: IUser | null = await User.findOne({ email });
   if (!user) {
-    throw new Error('User not found');
-  }
-
-  if(!user.isEmailVerified) {
-    throw new Error(StringConstants.EMAIL_NOT_VERIFIED);
+    throw new Error(StringConstants.USER_NOT_FOUND);
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);

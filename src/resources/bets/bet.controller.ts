@@ -121,7 +121,10 @@ export async function engageBetHandler(req: Request, res: Response): Promise<Res
         }
 
         return res.status(200).json(bet)
-    } catch (error) {
+    } catch (error: any) {
+        if (error.message === 'Pending witnesses') {
+            return res.status(400).json({ error: StringConstants.PENDING_WITNESS });
+        }
         return res.status(500).json({ error: StringConstants.FAILED_BET_ENGAGEMENT });
     }
 }

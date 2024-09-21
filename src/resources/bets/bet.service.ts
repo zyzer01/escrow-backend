@@ -81,7 +81,7 @@ export async function engageBet(betId: string): Promise<IBet | null> {
     const pendingWitnesses = await Witness.find({ betId: bet._id, status: { $ne: 'accepted' } });
 
     if (pendingWitnesses.length > 0) {
-        throw new Error('Bet cannot be engaged. Some witnesses have not accepted the bet.');
+        throw new Error('Pending witnesses');
     }
 
     await lockFunds({
