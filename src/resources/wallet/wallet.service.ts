@@ -10,14 +10,14 @@ import WalletTransaction from './models/wallet-transaction.model';
  */
 export async function payoutFunds (userId: string, amount: number, betId: string): Promise<void> {
   try {
-    let wallet = await Wallet.findOne({ userId });
+    let userWallet = await Wallet.findOne({ userId });
 
-    if (!wallet) {
-      wallet = new Wallet({ userId, balance: 0 });
+    if (!userWallet) {
+      userWallet = new Wallet({ userId, balance: 0 });
     }
 
-    wallet.balance += amount;
-    await wallet.save();
+    userWallet.balance += amount;
+    await userWallet.save();
 
     const transaction = new WalletTransaction({
       userId,
@@ -59,22 +59,22 @@ export async function refund(userId: string, amount: number, betId: string): Pro
   await userWallet.save();
 }
 
+export async function addToUserWallet(userId: string, amount: number, betId: string): Promise<void> {
+  let userWallet = await Wallet.findOne({ userId });
 
-export async function addToUserWallet(userId: string, amount: number): Promise<void> {
-  const userWallet = await Wallet.findOne({ userId });
+    if (!userWallet) {
+      userWallet = new Wallet({ userId, balance: 0 });
+    }
 
-  if (!userWallet) {
-      throw new Error('User wallet not found.');
-  }
-  userWallet.balance += amount;
+    userWallet.balance += amount;
+    await userWallet.save();
 
   const transaction = new WalletTransaction({
-    userId,
-    amount,
-    type: 'commission',
-    description: `Bet Commission`,
+      userId,
+      amount,
+      type: 'commission',
+      description: `Bet Commission`,
+      betId: betId
   });
-  await transaction.save
-
-  await userWallet.save();
+  await transaction.save();
 }

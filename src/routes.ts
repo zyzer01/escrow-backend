@@ -2,7 +2,7 @@ import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, updateUserHandler } from "./resources/users/user.controller";
 import { forgotPasswordHandler, loginUserHandler, registerUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware";
-import { acceptBetHandler, createBetHandler, deleteBetHandler, finalizeBetHandler, getBetHandler, getBetsHandler, rejectBetHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
+import { acceptBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, witnessAcceptBetHandler, witnessRecuseBetHandler } from "./resources/bets/witnesses/witness.controller";
 import { getTotalStakesHandler } from "./resources/escrow/escrow.controller";
 
@@ -27,8 +27,8 @@ function routes(app: Express) {
     app.delete('/api/bets/:id', deleteBetHandler)
     app.post('/api/bets/accept', acceptBetHandler)
     app.post('/api/bets/reject', rejectBetHandler)
-    app.post('/api/bets/finalize', finalizeBetHandler)
-    app.post('/api/bets/settle', settleBetHandler)
+    app.post('/api/bets/engage/:id', engageBetHandler)
+    app.post('/api/bets/settle/:id', settleBetHandler)
 
     app.post('/api/bets/witness/accept', witnessAcceptBetHandler)
     app.post('/api/bets/witness/recuse', witnessRecuseBetHandler)

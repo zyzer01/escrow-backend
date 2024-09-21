@@ -1,7 +1,9 @@
+import { StringConstants } from '../../common/strings';
 import { systemCommissionPercentage, witnessCommissionPercentage } from '../../utils/config';
 import Bet from '../bets/models/bet.model';
+import { distributeWitnessCommission } from '../bets/witnesses/witness.service';
 import { addToSystemWallet } from '../system-wallet/system-wallet.service';
-import { addToUserWallet, payoutFunds, refund } from '../wallet/wallet.service';
+import { payoutFunds, refund } from '../wallet/wallet.service';
 import Escrow, { IEscrow } from './escrow.model';
 
 
@@ -11,13 +13,8 @@ import Escrow, { IEscrow } from './escrow.model';
  * @returns Total stakes in the escrow.
  */
 export async function getTotalStakes(betId: string): Promise<number> {
-    const escrow = await Escrow.findOne({ betId });
+    const escrow = await Escrow.findById(betId);
 
-    console.log(escrow)
-
-    if (!escrow) {
-        throw new Error('Escrow not found for the provided bet ID.');
-    }
     const totalStakes = escrow.creatorStake + escrow.opponentStake;
     return totalStakes;
 }
@@ -36,27 +33,23 @@ export async function lockFunds(lockFundsData: Partial<IEscrow>) {
  * @param betId - 
  * @param winnerId -
  */
-export async function releaseFunds(betId: string, winnerId: string): Promise<void> {
+export async function releaseFunds(betId: string, winnerId: string): Promise<IEscrow | null> {
     const escrow = await Escrow.findOne({ betId });
-    if (!escrow) {
-        throw new Error('Escrow not found.');
+    
+    const bet = await Bet.findById(betId).populate('witnesses');
+
+    if (!bet || bet.status !== 'verified') {
+        throw new Error(StringConstants.INVALID_BET_STATE)
     }
 
     const totalStake = escrow.creatorStake + escrow.opponentStake;
     const systemCommission = totalStake * systemCommissionPercentage;
-    const witnessShare = totalStake * witnessCommissionPercentage;
-    const winnerShare = totalStake - systemCommission - witnessShare;
+    const witnessCommission = totalStake * witnessCommissionPercentage;
+    const winnerShare = totalStake - systemCommission - witnessCommission;
 
     await addToSystemWallet(systemCommission);
-
-    const bet = await Bet.findById(betId).populate('witnesses');
-    const witnesses = bet?.witnesses || [];
-    const witnessSharePerWitness = witnessShare / witnesses.length;
-
-    for (const witness of witnesses) {
-        await addToUserWallet(witness.userId, witnessSharePerWitness);
-    }
-
+    await distributeWitnessCommission(betId, witnessCommission);
+    
     if (escrow.creatorId === winnerId) {
         await payoutFunds(escrow.creatorId, winnerShare, betId);
     } else if (escrow.opponentId === winnerId) {
@@ -67,16 +60,17 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<voi
 
     escrow.status = 'released';
     await escrow.save();
-}
 
+    return escrow;
+}
 /**
  * Refunds funds to both participants of a bet if the bet is cancelled.
  * @param betId - The ID of the bet.
  */
-export const refundFunds = async (betId: string) => {
-    const escrow = await Escrow.findOne({ betId });
+export async function refundFunds (betId: string) {
+    const escrow = await Escrow.findById(betId);
     if (!escrow) {
-        throw new Error('Escrow not found.');
+        throw new Error(StringConstants.ESCROW_NOT_FOUND);
     }
 
     await refund(escrow.creatorId, escrow.creatorStake, betId);
@@ -85,5 +79,6 @@ export const refundFunds = async (betId: string) => {
     escrow.status = 'refunded';
     await escrow.save();
 
-    console.log('Funds refunded to both participants');
+    return 'Refunded'
+
 };

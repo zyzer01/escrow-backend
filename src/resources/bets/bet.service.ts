@@ -2,8 +2,9 @@ import { Types } from 'mongoose';
 import BetInvitation from './models/bet-invitation.model';
 import Bet, { IBet } from './models/bet.model'
 import Witness from './witnesses/witness.model';
-import { lockFunds, releaseFunds } from '../escrow/escrow.service';
+import { lockFunds, refundFunds, releaseFunds } from '../escrow/escrow.service';
 import { selectNeutralWitness } from '../../utils';
+import User from '../users/user.model';
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     if (designatedWitnesses.length < 2 || designatedWitnesses.length > 3) {
@@ -43,17 +44,15 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
     return bet;
 }
 
-export async function acceptBetInvitation(invitationId: string, opponentStake: number, opponentPrediction: string) {
+export async function updateBet(id: string, betData: Partial<IBet>): Promise<IBet | null> {
+    const bet = await Bet.findOne({ _id: Object(id) })
+
+    return Bet.findByIdAndUpdate(bet._id, betData)
+}
+
+export async function acceptBetInvitation(invitationId: string, opponentStake: number, opponentPrediction: string): Promise<IBet | null> {
 
     const invitation = await BetInvitation.findById(invitationId).populate('betId');
-
-    if (!invitation) {
-        throw new Error('Invitation not found')
-    }
-
-    if (invitation.status !== 'pending') {
-        throw new Error('Bet already accepted or declined')
-    }
 
     const bet = invitation.betId;
     bet.opponentStake = opponentStake;
@@ -64,31 +63,27 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
     invitation.status = 'accepted';
     await invitation.save();
 
-    return bet
+    return invitation
 }
 
-export async function rejectBetInvitation(invitationId: string) {
+export async function rejectBetInvitation(invitationId: string): Promise<IBet | null> {
     const invitation = await BetInvitation.findById(invitationId)
-
-    if (!invitation) {
-        throw new Error('Invitation not found')
-    }
-
-    if (invitation.status !== 'pending') {
-        throw new Error('Bet already accepted or declined')
-    }
 
     invitation.status = 'rejected';
     await invitation.save();
+
+    return invitation
 }
 
-export async function finalizeBet(betId: string) {
+export async function engageBet(betId: string): Promise<IBet | null> {
 
-    const bet = await Bet.findOne({betId});
+    const bet = await Bet.findById(betId);
+    const pendingWitnesses = await Witness.find({ betId: bet._id, status: { $ne: 'accepted' } });
 
-    if (!bet || bet.status !== 'accepted') {
-        throw new Error('Invalid bet finalization')
+    if (pendingWitnesses.length > 0) {
+        throw new Error('Bet cannot be engaged. Some witnesses have not accepted the bet.');
     }
+
     await lockFunds({
         betId: bet._id,
         creatorId: bet.creatorId,
@@ -97,32 +92,54 @@ export async function finalizeBet(betId: string) {
         opponentStake: bet.opponentStake,
         status: 'locked'
     });
+
+    bet.status = 'active';
+    await bet.save();
+
+    return bet
 }
 
 /**
  * Settles the bet by determining the winner, releasing funds from escrow, and closing the bet.
  * @param betId - The ID of the bet to settle.
  */
-export async function settleBet(betId: string) {
-    const bet = await Bet.findOne({betId});
 
-    if (!bet || bet.status !== 'verified') {
-        throw new Error('Bet is not in a valid state to be settled.');
-    }
+export async function settleBet(betId: string): Promise<IBet | null> {
+    const bet = await Bet.findById(betId);
 
-    if (!bet.winnerId) {
-        throw new Error('Winner not determined.');
-    }
-
-    const winnerId = bet.winnerId.toString(); 
-
-    console.log(winnerId)
+    const winnerId = bet.winnerId.toString();
 
     await releaseFunds(bet._id, winnerId);
 
+    await User.updateOne({ _id: bet.creatorId }, { $inc: { bets_participated: 1 } });
+
+    if (bet.opponentId) {
+        await User.updateOne({ _id: bet.opponentId }, { $inc: { bets_participated: 1 } });
+    }
+
+    const witnesses = bet.witnesses;
+    for (const witness of witnesses) {
+        await User.updateOne({ _id: witness.userId }, { $inc: { bets_witnessed: 1 } });
+    }
     bet.status = 'closed';
     await bet.save();
+
+    return bet;
 }
+
+
+
+export async function cancelBet(betId: string): Promise<IBet | null> {
+
+    const bet = await Bet.findById(betId);
+
+    await refundFunds(betId);
+
+    bet.status = 'canceled';
+    await bet.save();
+
+    return bet;
+};
 
 export async function getBets(): Promise<IBet[]> {
     return Bet.find()
@@ -132,9 +149,6 @@ export async function getBet(id: string): Promise<IBet | null> {
     return Bet.findById(id);
 }
 
-export async function updateBet(id: string, betData: Partial<IBet>): Promise<IBet | null> {
-    return Bet.findByIdAndUpdate(id, betData)
-}
 
 export async function deleteBet(id: string): Promise<IBet | null> {
     return Bet.findByIdAndDelete(id).exec();

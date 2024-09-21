@@ -1,14 +1,31 @@
 export enum StringConstants {
+  BET_NOT_FOUND = "Bet not found",
+  BET_CANCELED_AND_REFUNDED = "Bet canceled and refunded",
+  BET_INVITATION_NOT_FOUND = "Bet invitation not found",
+  BET_ALREADY_ACCEPTED_ENGAGED = "Bet has already been accepted or engaged",
+  BET_ALREADY_ACCEPTED_DECLINED = "Bet has already been accepted or declined",
+  BET_WINNER_NOT_DETERMINED = "Winner not determined",
   CONFIRM_EMAIL = "Confirm your email",
   EMAIL_ALREADY_VERIFIED = "Email is already verified.",
   EMAIL_NOT_VERIFIED = "Email is not verified.",
   EMAIL_ALREADY_IN_USE = "Email is already in use",
+  ESCROW_NOT_FOUND = "Escrow not found",
   FORGOT_PASSWORD = "Password reset code has been sent to your email address.",
+  FAILED_BET_UPDATE = "Failed to update bet",
+  FAILED_BET_DELETE = "Failed to update bet",
+  FAILED_BET_ACCEPTANCE = "Failed to accept bet",
+  FAILED_BET_REJECTION = "Failed to reject bet",
+  FAILED_BET_ENGAGEMENT = "Failed to engage bet",
+  FAILED_BET_SETTLEMENT = "Failed to settle bet",
+  FAILED_BET_CANCELATION = "Failed to cancel bet",
+  FAILED_STAKES_FETCH = "Failed to get stakes",
   INVALID_PASSWORD = "Invalid password. Kindly enter new password.",
   INVALID_EXPIRED_TOKEN = "Invalid or Expired Token",
+  INVALID_BET_FINALIZATION = "Invalid bet finalization",
+  INVALID_BET_STATE = "Bet is not in a valid state",
   PASSWORD_RESET_SUCCESSFUL = "Password has been reset successfully.",
   SIGNUP_SUCCESSFUL = "Confirmation code sent to email.",
   USER_NOT_FOUND = "User not found",
-  BET_NOT_FOUND = "Bet not found"
+
 }
 

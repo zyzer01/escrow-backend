@@ -19,6 +19,16 @@ export async function acceptBet(witnessId: string): Promise<Response> {
         throw new Error('Bet already accepted or recused')
     }
 
+    const bet = await Bet.findById(witness.betId);
+
+    if (!bet) {
+        throw new Error('Bet not found');
+    }
+
+    if (bet.status !== 'accepted') {
+        throw new Error('Bet must be accepted by the opponent before witnesses can accept.');
+    }
+
     witness.status = 'accepted';
     await witness.save();
 
@@ -113,4 +123,20 @@ export async function determineWinner(betId: string): Promise<string | null> {
     }
 
     return winner;
+}
+
+
+export async function distributeWitnessCommission(betId: string, witnessCommission: number): Promise<void> {
+    const witnesses = await Witness.find({ betId, status: 'accepted' });
+
+    if (witnesses.length === 0) {
+        console.log('No witnesses to distribute commission to.');
+        return;
+    }
+
+    const witnessShare = witnessCommission / witnesses.length;
+
+    for (const witness of witnesses) {
+        await addToUserWallet(witness.userId, witnessShare, betId);
+    }
 }

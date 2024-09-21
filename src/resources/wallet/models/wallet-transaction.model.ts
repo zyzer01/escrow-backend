@@ -12,7 +12,7 @@ const TransactionSchema: Schema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, required: true },
-    type: { type: String, enum: ['payout', 'refund'], required: true },
+    type: { type: String, enum: ['payout', 'refund', 'commission'], required: true },
     description: { type: String, required: true },
     betId: { type: Schema.Types.ObjectId, ref: 'Bet', required: true },
   },
