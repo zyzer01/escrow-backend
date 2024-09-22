@@ -5,10 +5,18 @@ import Witness from './witnesses/witness.model';
 import { lockFunds, refundFunds, releaseFunds } from '../escrow/escrow.service';
 import { selectNeutralWitness } from '../../utils';
 import User from '../users/user.model';
+import { StringConstants } from '../../common/strings';
+import { createNotification } from '../notifications/notification.service';
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     if (designatedWitnesses.length < 2 || designatedWitnesses.length > 3) {
         throw new Error('You must designate between 2 and 3 witnesses.');
+    }
+
+    // Validate witness IDs
+    const validWitnessIds = await User.find({ _id: { $in: designatedWitnesses } }).distinct('_id');
+    if (validWitnessIds.length !== designatedWitnesses.length) {
+        throw new Error(StringConstants.WITNESS_DOES_NOT_EXIST);
     }
 
     let neutralWitnessId = null;
@@ -54,6 +62,14 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
 
     const invitation = await BetInvitation.findById(invitationId).populate('betId');
 
+    if(!invitation) {
+        throw new Error(StringConstants.BET_INVITATION_NOT_FOUND)
+    }
+
+    if (!invitation || invitation.status !== 'pending') {
+        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_DECLINED)
+    }
+
     const bet = invitation.betId;
     bet.opponentStake = opponentStake;
     bet.predictions.opponentPrediction = opponentPrediction;
@@ -62,6 +78,15 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
 
     invitation.status = 'accepted';
     await invitation.save();
+
+    await lockFunds({
+        betId: bet._id,
+        creatorId: bet.creatorId,
+        creatorStake: bet.creatorStake,
+        opponentId: bet.opponentId,
+        opponentStake: bet.opponentStake,
+        status: 'locked'
+    });
 
     return invitation
 }
@@ -78,20 +103,16 @@ export async function rejectBetInvitation(invitationId: string): Promise<IBet | 
 export async function engageBet(betId: string): Promise<IBet | null> {
 
     const bet = await Bet.findById(betId);
+
+    if (bet.status !== 'accepted') {
+        throw new Error(StringConstants.INVALID_BET_STATE)
+    }
+
     const pendingWitnesses = await Witness.find({ betId: bet._id, status: { $ne: 'accepted' } });
 
     if (pendingWitnesses.length > 0) {
         throw new Error('Pending witnesses');
     }
-
-    await lockFunds({
-        betId: bet._id,
-        creatorId: bet.creatorId,
-        creatorStake: bet.creatorStake,
-        opponentId: bet.opponentId,
-        opponentStake: bet.opponentStake,
-        status: 'locked'
-    });
 
     bet.status = 'active';
     await bet.save();
@@ -106,8 +127,15 @@ export async function engageBet(betId: string): Promise<IBet | null> {
 
 export async function settleBet(betId: string): Promise<IBet | null> {
     const bet = await Bet.findById(betId);
-
     const winnerId = bet.winnerId.toString();
+
+    if (!bet || bet.status !== 'verified') {
+        throw new Error(StringConstants.INVALID_BET_STATE)
+    }
+
+    if (!bet.winnerId) {
+        throw new Error(StringConstants.BET_WINNER_NOT_DETERMINED)
+    }
 
     await releaseFunds(bet._id, winnerId);
 
@@ -121,6 +149,21 @@ export async function settleBet(betId: string): Promise<IBet | null> {
     for (const witness of witnesses) {
         await User.updateOne({ _id: witness.userId }, { $inc: { bets_witnessed: 1 } });
     }
+
+    await createNotification(
+      winnerId,
+      "bet-settled",
+      StringConstants.NOTIFY_BET_WINNER_TITLE,
+      "You won! Congratulations"
+    );
+    const loserId = bet.creatorId.toString() === winnerId ? bet.opponentId.toString() : bet.creatorId.toString();
+    await createNotification(
+        loserId,
+        "bet-settled",
+        StringConstants.NOTIFY_BET_LOSER_TITLE,
+        "You lost the bet. What is cashout?"
+    );
+
     bet.status = 'closed';
     await bet.save();
 
@@ -132,6 +175,9 @@ export async function settleBet(betId: string): Promise<IBet | null> {
 export async function cancelBet(betId: string): Promise<IBet | null> {
 
     const bet = await Bet.findById(betId);
+    if (!bet || bet.status !== 'accepted') {
+        throw new Error(StringConstants.INVALID_BET_STATE)
+    }
 
     await refundFunds(betId);
 

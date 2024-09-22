@@ -1,7 +1,7 @@
 import Notification, { INotification } from './notification.model';
 
-export async function createNotification(userId: string, type: string, content: string): Promise<INotification> {
-  const notification = new Notification({ userId, type, content });
+export async function createNotification(userId: string, type: string, title: string, content: string): Promise<INotification> {
+  const notification = new Notification({ userId, type, title, content });
   return await notification.save();
 }
 

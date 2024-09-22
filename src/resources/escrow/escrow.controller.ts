@@ -31,15 +31,16 @@ export async function lockFundsHandler(req: Request, res: Response) {
 
 
   export async function getTotalStakesHandler(req: Request, res: Response) {
-    const { betId } = req.body;
+    const { id } = req.params
   
     try {
-        const escrow = await getTotalStakes(betId);
-        if (!escrow) {
-            return res.status(404).json({ error: StringConstants.ESCROW_NOT_FOUND })
-        }
+        const escrow = await getTotalStakes(id);
         return res.status(200).json(escrow)
     } catch (error: any) {
+        console.error(error)
+        if(error.message === StringConstants.ESCROW_NOT_FOUND) {
+            return res.status(404).json({ error: StringConstants.ESCROW_NOT_FOUND })
+        }
         res.status(500).json({ error: StringConstants.FAILED_STAKES_FETCH })
     }
   };

@@ -13,7 +13,12 @@ import Escrow, { IEscrow } from './escrow.model';
  * @returns Total stakes in the escrow.
  */
 export async function getTotalStakes(betId: string): Promise<number> {
-    const escrow = await Escrow.findById(betId);
+    const escrow = await Escrow.findOne({betId});
+
+    console.log(escrow);
+    if (!escrow) {
+        throw new Error(StringConstants.ESCROW_NOT_FOUND)
+    }
 
     const totalStakes = escrow.creatorStake + escrow.opponentStake;
     return totalStakes;
@@ -36,13 +41,13 @@ export async function lockFunds(lockFundsData: Partial<IEscrow>) {
 export async function releaseFunds(betId: string, winnerId: string): Promise<IEscrow | null> {
     const escrow = await Escrow.findOne({ betId });
     
-    const bet = await Bet.findById(betId).populate('witnesses');
+    const bet = await Bet.findById(betId);
 
     if (!bet || bet.status !== 'verified') {
         throw new Error(StringConstants.INVALID_BET_STATE)
     }
 
-    const totalStake = escrow.creatorStake + escrow.opponentStake;
+    const totalStake = (escrow.creatorStake || 0) + (escrow.opponentStake || 0);
     const systemCommission = totalStake * systemCommissionPercentage;
     const witnessCommission = totalStake * witnessCommissionPercentage;
     const winnerShare = totalStake - systemCommission - witnessCommission;
@@ -68,16 +73,22 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<IEs
  * @param betId - The ID of the bet.
  */
 export async function refundFunds (betId: string) {
-    const escrow = await Escrow.findById(betId);
-    if (!escrow) {
+    try {
+      const escrow = await Escrow.findOne({betId});
+      console.log(escrow)
+      if (!escrow) {
         throw new Error(StringConstants.ESCROW_NOT_FOUND);
+      }
+
+      await refund(escrow.creatorId, escrow.creatorStake, betId);
+      await refund(escrow.opponentId, escrow.opponentStake, betId);
+
+      escrow.status = "refunded";
+      await escrow.save();
+    } catch (error) {
+      console.error(error);
+      throw new Error("Failed to refund stakes");
     }
-
-    await refund(escrow.creatorId, escrow.creatorStake, betId);
-    await refund(escrow.opponentId, escrow.opponentStake, betId);
-
-    escrow.status = 'refunded';
-    await escrow.save();
 
     return 'Refunded'
 

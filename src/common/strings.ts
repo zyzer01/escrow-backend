@@ -14,7 +14,9 @@ export enum StringConstants {
   ESCROW_NOT_FOUND = "Escrow not found",
   FORGOT_PASSWORD = "Password reset code has been sent to your email address.",
   FAILED_BET_UPDATE = "Failed to update bet",
-  FAILED_BET_DELETE = "Failed to update bet",
+  FAILED_BET_DELETE = "Failed to delete bet",
+  FAILED_BET_CREATION = "Failed to create bet",
+  FAILED_BET_FETCH = "Failed to fetch bet",
   FAILED_BET_ACCEPTANCE = "Failed to accept bet",
   FAILED_BET_REJECTION = "Failed to reject bet",
   FAILED_BET_ENGAGEMENT = "Failed to engage bet",
@@ -26,10 +28,14 @@ export enum StringConstants {
   INVALID_EXPIRED_TOKEN = "Invalid or Expired Token",
   INVALID_BET_FINALIZATION = "Invalid bet finalization",
   INVALID_BET_STATE = "Bet is not in a valid state",
+  NO_NEUTRAL_WITNESS_FOUND = "No eligible neutral witnesses found.",
+  NOTIFY_BET_WINNER_TITLE = "Bet Settled",
+  NOTIFY_BET_CLOSED_TITLE = "Bet Closed.",
+  NOTIFY_BET_LOSER_TITLE = "Bet Settled",
   PASSWORD_RESET_SUCCESSFUL = "Password has been reset successfully.",
   REGISTRATION_ERROR = "An error occurred during registration",
   SIGNUP_SUCCESSFUL = "Confirmation code sent to email.",
   USER_NOT_FOUND = "User not found",
-
+  WITNESS_DOES_NOT_EXIST = "One or more witness IDs do not match any user ID in the database",
 }
 

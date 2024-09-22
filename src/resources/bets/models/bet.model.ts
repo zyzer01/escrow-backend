@@ -9,7 +9,7 @@ export interface IBet extends Document {
   creatorStake: number;
   opponentStake?: number;
   deadline: Date;
-  status: 'pending' | 'accepted' | 'active' | 'verified' | 'closed' | 'disputed';
+  status: 'pending' | 'accepted' | 'active' | 'verified' | 'closed' | 'canceled' | 'disputed';
   witnesses: Types.ObjectId[];
   predictions: {
     creatorPrediction: string;
@@ -27,7 +27,7 @@ const BetSchema: Schema = new Schema(
     creatorStake: { type: Number, required: true },
     opponentStake: { type: Number },
     deadline: { type: Date },
-    status: { type: String, required: true, enum: ['pending', 'accepted', 'active', 'verified', 'closed', 'disputed'], default: 'pending' },
+    status: { type: String, required: true, enum: ['pending', 'accepted', 'active', 'verified', 'closed', 'canceled', 'disputed'], default: 'pending' },
     witnesses: [{ type: Schema.Types.ObjectId, ref: 'Witness' }],
     predictions: {
       creatorPrediction: { type: String, required: true },

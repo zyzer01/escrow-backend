@@ -10,6 +10,9 @@ export async function acceptBet(witnessId: string): Promise<Response> {
 
     const witness = await Witness.findById(witnessId);
 
+    console.log(witness);
+    
+
     if (!witness) {
         throw new Error('Witness not found')
     }
