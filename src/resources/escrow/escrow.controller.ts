@@ -25,7 +25,17 @@ export async function lockFundsHandler(req: Request, res: Response) {
 
       res.status(200).json({ message: 'Bet closed and funds released' });
     } catch (error: any) {
-        res.status(500).json({ message: 'Error releasing funds', error });
+        if (error.message === StringConstants.BET_NOT_FOUND) {
+          return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
+        } else if (error.message === StringConstants.INVALID_BET_STATE) {
+          return res
+            .status(403)
+            .json({ error: StringConstants.INVALID_BET_STATE });
+        } else {
+          return res
+            .status(500)
+            .json({ error: StringConstants.FAILED_FUNDS_RELEASE });
+        }
     }
   };
 

@@ -10,3 +10,4 @@
 [x] Voting System
 [x] User Wallet System
 [x] Implement notification service
+[x] Dispute Logging and resolution

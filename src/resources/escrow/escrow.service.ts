@@ -13,7 +13,7 @@ import Escrow, { IEscrow } from './escrow.model';
  * @returns Total stakes in the escrow.
  */
 export async function getTotalStakes(betId: string): Promise<number> {
-    const escrow = await Escrow.findOne({betId});
+    const escrow = await Escrow.findOne({ betId });
 
     console.log(escrow);
     if (!escrow) {
@@ -40,11 +40,14 @@ export async function lockFunds(lockFundsData: Partial<IEscrow>) {
  */
 export async function releaseFunds(betId: string, winnerId: string): Promise<IEscrow | null> {
     const escrow = await Escrow.findOne({ betId });
-    
+
     const bet = await Bet.findById(betId);
 
-    if (!bet || bet.status !== 'verified') {
-        throw new Error(StringConstants.INVALID_BET_STATE)
+    if(!bet) {
+        throw new Error(StringConstants.BET_NOT_FOUND)
+    }
+    if (bet.status !== 'verified' && bet.status !== 'disputed') {
+        throw new Error(StringConstants.INVALID_BET_STATE);
     }
 
     const totalStake = (escrow.creatorStake || 0) + (escrow.opponentStake || 0);
@@ -54,10 +57,10 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<IEs
 
     await addToSystemWallet(systemCommission);
     await distributeWitnessCommission(betId, witnessCommission);
-    
-    if (escrow.creatorId === winnerId) {
+
+    if (escrow.creatorId.toString() === winnerId.toString()) {
         await payoutFunds(escrow.creatorId, winnerShare, betId);
-    } else if (escrow.opponentId === winnerId) {
+    } else if (escrow.opponentId.toString() === winnerId.toString()) {
         await payoutFunds(escrow.opponentId, winnerShare, betId);
     } else {
         throw new Error('Winner ID does not match any participant');
@@ -72,24 +75,57 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<IEs
  * Refunds funds to both participants of a bet if the bet is cancelled.
  * @param betId - The ID of the bet.
  */
-export async function refundFunds (betId: string) {
+export async function refundFunds(betId: string) {
     try {
-      const escrow = await Escrow.findOne({betId});
-      console.log(escrow)
-      if (!escrow) {
-        throw new Error(StringConstants.ESCROW_NOT_FOUND);
-      }
+        const escrow = await Escrow.findOne({ betId });
+        console.log(escrow)
+        if (!escrow) {
+            throw new Error(StringConstants.ESCROW_NOT_FOUND);
+        }
 
-      await refund(escrow.creatorId, escrow.creatorStake, betId);
-      await refund(escrow.opponentId, escrow.opponentStake, betId);
+        await refund(escrow.creatorId, escrow.creatorStake, betId);
+        await refund(escrow.opponentId, escrow.opponentStake, betId);
 
-      escrow.status = "refunded";
-      await escrow.save();
+        escrow.status = "refunded";
+        await escrow.save();
     } catch (error) {
-      console.error(error);
-      throw new Error("Failed to refund stakes");
+        console.error(error);
+        throw new Error("Failed to refund stakes");
     }
 
     return 'Refunded'
 
 };
+
+
+/**
+ * Reverses the outcome of a bet by paying out the new winner.
+ * Reuses the releaseFunds function.
+ * @param betId - The ID of the bet to reverse.
+ */
+export async function reverseBetOutcome(betId: string): Promise<void> {
+    const bet = await Bet.findById(betId);
+    if (!bet) {
+        throw new Error('Bet not found.');
+    }
+
+    const originalWinnerId = bet.winnerId;
+    if (!originalWinnerId) {
+        throw new Error('Bet does not have a winner to reverse.');
+    }
+
+    const newWinnerId = (bet.creatorId.toString() === originalWinnerId.toString())
+        ? bet.opponentId
+        : bet.creatorId;
+
+    if (!newWinnerId) {
+        throw new Error('No opponent available to reverse outcome.');
+    }
+
+    await releaseFunds(betId, newWinnerId);
+
+    bet.winnerId = newWinnerId;
+    await bet.save();
+
+    console.log(`Bet outcome reversed. New winner is user: ${newWinnerId}`);
+}

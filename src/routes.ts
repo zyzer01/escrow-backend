@@ -6,6 +6,7 @@ import { acceptBetHandler, cancelBetHandler, createBetHandler, deleteBetHandler,
 import { castVoteHandler, determineWinnerHandler, witnessAcceptBetHandler, witnessRecuseBetHandler } from "./resources/bets/witnesses/witness.controller";
 import { getTotalStakesHandler } from "./resources/escrow/escrow.controller";
 import rateLimit from 'express-rate-limit';
+import { getAllDisputesHandler, logDisputeHandler, resolveDisputeHandler } from "./resources/bet-disputes/bet-dispute.controller";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -45,6 +46,11 @@ function routes(app: Express) {
     app.post('/api/bets/witness/:id/judge/', determineWinnerHandler)
 
     app.get('/api/escrow/stakes/:id', getTotalStakesHandler)
+
+    app.post('/api/dispute/log', logDisputeHandler)
+    app.post('/api/dispute/resolve', resolveDisputeHandler)
+    app.get('/api/dispute', getAllDisputesHandler)
+
     
 }
 

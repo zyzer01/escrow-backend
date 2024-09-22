@@ -133,6 +133,10 @@ export async function settleBet(betId: string): Promise<IBet | null> {
         throw new Error(StringConstants.INVALID_BET_STATE)
     }
 
+    if (bet.status === 'disputed') {
+        throw new Error('Bet is currently disputed and cannot be engaged.');
+    }
+
     if (!bet.winnerId) {
         throw new Error(StringConstants.BET_WINNER_NOT_DETERMINED)
     }
@@ -186,6 +190,7 @@ export async function cancelBet(betId: string): Promise<IBet | null> {
 
     return bet;
 };
+
 
 export async function getBets(): Promise<IBet[]> {
     return Bet.find()
