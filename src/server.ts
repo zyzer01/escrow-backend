@@ -4,7 +4,6 @@ import dbConnect from './lib/db';
 import dotenv from 'dotenv'
 import helmet from 'helmet'
 import cors from 'cors'
-import { errorHandler, notFoundHandler } from './lib/middleware/errors';
 
 const app = express();
 dotenv.config()
@@ -27,8 +26,6 @@ app.use(cors({
 }));
 
 app.use(helmet())
-// app.use(notFoundHandler);
-app.use(errorHandler);
 
 dbConnect().then(() => {
   console.log('Connected to the database');
