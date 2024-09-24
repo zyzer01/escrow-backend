@@ -63,6 +63,7 @@ export async function setPrimaryBankAccount(userId: string, bankAccountId: strin
   return bankAccount;
 }
 
+
 export async function deleteBankAccount(userId: string, bankAccountId: string): Promise<void> {
     const bankAccount = await BankAccount.findOneAndDelete({ _id: bankAccountId, userId });
 
