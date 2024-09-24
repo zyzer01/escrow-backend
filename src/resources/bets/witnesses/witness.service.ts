@@ -12,7 +12,7 @@ export async function acceptWitnessInvite(witnessId: string): Promise<Response> 
     const witness = await Witness.findById(witnessId);
 
     console.log(witness);
-    
+
 
     if (!witness) {
         throw new Error(StringConstants.WITNESS_NOT_FOUND)
@@ -21,7 +21,7 @@ export async function acceptWitnessInvite(witnessId: string): Promise<Response> 
     if (witness.status !== 'pending') {
         throw new Error(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
-    
+
 
     const bet = await Bet.findById(witness.betId);
 
@@ -123,7 +123,7 @@ export async function determineWinner(betId: string): Promise<string | null> {
             bet.winnerId = bet.creatorId;
         } else if (winner === 'opponent') {
             bet.winnerId = bet.opponentId;
-        }  else {
+        } else {
             throw new Error(StringConstants.INVALID_WINNER);
         }
 
@@ -137,14 +137,17 @@ export async function determineWinner(betId: string): Promise<string | null> {
 
 export async function distributeWitnessCommission(betId: string, witnessCommission: number): Promise<void> {
     const witnesses = await Witness.find({ betId, status: 'accepted' });
+    const bet = await Bet.findById(betId)
 
-    if (witnesses.length === 0) {
-        throw new Error(StringConstants.NO_WITNESSES_FOR_COMMISSION)
-    }
+    if (bet.betType === 'with-witnesses') {
+        if (witnesses.length === 0) {
+            throw new Error(StringConstants.NO_WITNESSES_FOR_COMMISSION)
+        }
 
-    const witnessShare = witnessCommission / witnesses.length;
+        const witnessShare = witnessCommission / witnesses.length;
 
-    for (const witness of witnesses) {
-        await addToUserWallet(witness.userId, witnessShare, betId);
+        for (const witness of witnesses) {
+            await addToUserWallet(witness.userId, witnessShare, betId);
+        }
     }
 }

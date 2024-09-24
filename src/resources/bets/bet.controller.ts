@@ -136,13 +136,15 @@ export async function rejectBetHandler(req: Request, res: Response): Promise<Res
 }
 
 
-export async function engageBetHandler(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params
-    try {
-        const bet = await engageBet(id);
 
-        return res.status(200).json(bet)
+export async function engageBetHandler(req: Request, res: Response): Promise<Response> {
+    const { betId } = req.params;
+    try {
+        const bet = await engageBet(betId);
+
+        return res.status(200).json(bet);
     } catch (error: any) {
+        console.error(error)
         switch (error.message) {
             case StringConstants.BET_NOT_FOUND:
                 return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
@@ -155,12 +157,13 @@ export async function engageBetHandler(req: Request, res: Response): Promise<Res
 }
 
 export async function settleBetHandler(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params
+    const { id, winnerId } = req.body;
     try {
-        const bet = await settleBet(id)
+        const bet = await settleBet(id, winnerId);
 
-        return res.status(200).json(bet)
+        return res.status(200).json(bet);
     } catch (error: any) {
+        console.error(error)
         switch (error.message) {
             case StringConstants.BET_NOT_FOUND:
                 return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });

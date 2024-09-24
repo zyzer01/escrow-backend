@@ -40,7 +40,7 @@ function routes(app: Express) {
   app.post('/api/bets/accept', acceptBetHandler)
   app.post('/api/bets/reject', rejectBetHandler)
   app.post('/api/bets/:betId/engage', engageBetHandler)
-  app.post('/api/bets/:betId/settle', settleBetHandler)
+  app.post('/api/bets/settle', settleBetHandler)
   app.post('/api/bets/:betId/cancel', cancelBetHandler)
 
   app.post('/api/bets/witness/:witnessId/accept', witnessAcceptInviteHandler)
