@@ -1,5 +1,5 @@
 import { StringConstants } from '../../common/strings';
-import { systemCommissionPercentage, witnessCommissionPercentage } from '../../utils/config';
+import { systemCommissionPercentage, witnessCommissionPercentage } from '../../config';
 import Bet from '../bets/models/bet.model';
 import { distributeWitnessCommission } from '../bets/witnesses/witness.service';
 import { addToSystemWallet } from '../system-wallet/system-wallet.service';
@@ -96,36 +96,3 @@ export async function refundFunds(betId: string) {
     return 'Refunded'
 
 };
-
-
-/**
- * Reverses the outcome of a bet by paying out the new winner.
- * Reuses the releaseFunds function.
- * @param betId - The ID of the bet to reverse.
- */
-export async function reverseBetOutcome(betId: string): Promise<void> {
-    const bet = await Bet.findById(betId);
-    if (!bet) {
-        throw new Error('Bet not found.');
-    }
-
-    const originalWinnerId = bet.winnerId;
-    if (!originalWinnerId) {
-        throw new Error('Bet does not have a winner to reverse.');
-    }
-
-    const newWinnerId = (bet.creatorId.toString() === originalWinnerId.toString())
-        ? bet.opponentId
-        : bet.creatorId;
-
-    if (!newWinnerId) {
-        throw new Error('No opponent available to reverse outcome.');
-    }
-
-    await releaseFunds(betId, newWinnerId);
-
-    bet.winnerId = newWinnerId;
-    await bet.save();
-
-    console.log(`Bet outcome reversed. New winner is user: ${newWinnerId}`);
-}

@@ -11,3 +11,8 @@
 [x] User Wallet System
 [x] Implement notification service
 [x] Dispute Logging and resolution
+[x] Wallet funding: Verify Account number
+[x] Wallet funding: Wallet withdrawal (roadblock)
+[x] Wallet funding: Fund wallet
+[x] Complete Wallet funding and withdrawal (paystack)
+

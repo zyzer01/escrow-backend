@@ -2,10 +2,15 @@ import { Request, Response } from "express";
 import { createUser, deleteUser, getAllUsers, getUser, updateUser } from './user.service';
 
 export async function getAllUsersHandler(req: Request, res: Response) {
+  const limit = parseInt(req.query.limit as string, 10)
   try {
     const users = await getAllUsers();
+    if(!isNaN(limit) && limit > 0) {
+      return res.status(200).json(users.slice(0, limit))
+    }
     res.status(200).json(users);
   } catch (error) {
+    console.error(error)
     res.status(500).json({ error: 'Internal Server Error' });
   }
 }

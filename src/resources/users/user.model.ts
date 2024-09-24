@@ -4,8 +4,8 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
-  firstname?: string;
-  lastname?: string;
+  firstName?: string;
+  lastName?: string;
   phone_number?: string;
   role: string;
   government_id_verified: boolean;
@@ -27,8 +27,8 @@ const UserSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true, min: [3, 'Username cannot be less than 3 characters'] },
   email: { type: String, required: true, unique: true, match: [/.+\@.+\..+/, 'Invalid email'] },
   password: { type: String, required: true, min: [6, 'Password cannot be less than 6 characters'] },
-  firstname: { type: String },
-  lastname: { type: String },
+  firstName: { type: String },
+  lastName: { type: String },
   phone_number: { type: String },
   role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' }, 
   reputation_score: { type: Number, default: 0 },

@@ -1,3 +1,4 @@
+import { StringConstants } from "../../../common/strings";
 import { addToUserWallet, payoutFunds } from "../../wallet/wallet.service";
 import Bet from "../models/bet.model";
 import Witness from './witness.model'; // Assuming the Witness model is in a file named models/Witness.ts
@@ -6,7 +7,7 @@ import Witness from './witness.model'; // Assuming the Witness model is in a fil
  * Accepts witness role for bet
  */
 
-export async function acceptBet(witnessId: string): Promise<Response> {
+export async function acceptWitnessInvite(witnessId: string): Promise<Response> {
 
     const witness = await Witness.findById(witnessId);
 
@@ -14,21 +15,22 @@ export async function acceptBet(witnessId: string): Promise<Response> {
     
 
     if (!witness) {
-        throw new Error('Witness not found')
+        throw new Error(StringConstants.WITNESS_NOT_FOUND)
     }
 
     if (witness.status !== 'pending') {
-        throw new Error('Bet already accepted or recused')
+        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
+    
 
     const bet = await Bet.findById(witness.betId);
 
     if (!bet) {
-        throw new Error('Bet not found');
+        throw new Error(StringConstants.BET_NOT_FOUND);
     }
 
     if (bet.status !== 'accepted') {
-        throw new Error('Bet must be accepted by the opponent before witnesses can accept.');
+        throw new Error(StringConstants.OPPONENT_YET_TO_ACCEPT);
     }
 
     witness.status = 'accepted';
@@ -41,16 +43,16 @@ export async function acceptBet(witnessId: string): Promise<Response> {
  * Steps user down as a witness
  */
 
-export async function recuseBet(witnessId: string): Promise<Response> {
+export async function rejectWitnessInvite(witnessId: string): Promise<Response> {
 
     const witness = await Witness.findById(witnessId);
 
     if (!witness) {
-        throw new Error('Witness not found')
+        throw new Error(StringConstants.WITNESS_NOT_FOUND)
     }
 
     if (witness.status !== 'pending') {
-        throw new Error('Bet already accepted or recused')
+        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
     witness.status = 'recused';
@@ -67,8 +69,12 @@ export async function castVote(betId: string, witnessId: string, vote: string) {
 
     const witness = await Witness.findOne({ betId, userId: witnessId });
 
-    if (!witness || witness.status !== 'accepted') {
-        throw new Error('Witness is not eligible to vote or has already been recused.')
+    if (!witness) {
+        throw new Error(StringConstants.WITNESS_NOT_FOUND)
+    }
+
+    if (witness.status !== 'accepted') {
+        throw new Error(StringConstants.WITNESS_INVITE_REJECTED)
     }
 
     witness.vote = vote;
@@ -87,7 +93,7 @@ export async function determineWinner(betId: string): Promise<string | null> {
     const witnesses = await Witness.find({ betId, status: 'accepted' });
 
     if (witnesses.length < 3) {
-        throw new Error('Not enough votes to determine a winner.');
+        throw new Error(StringConstants.INSUFFICIENT_VOTES);
     }
 
     const voteCount = { creator: 0, opponent: 0 };
@@ -108,16 +114,17 @@ export async function determineWinner(betId: string): Promise<string | null> {
         winner = 'opponent';
     }
 
+    const bet = await Bet.findById(betId);
     if (winner) {
-        const bet = await Bet.findById(betId);
         if (!bet) {
-            throw new Error('Bet not found.');
+            throw new Error(StringConstants.BET_NOT_FOUND);
         }
-
         if (winner === 'creator') {
             bet.winnerId = bet.creatorId;
         } else if (winner === 'opponent') {
             bet.winnerId = bet.opponentId;
+        }  else {
+            throw new Error(StringConstants.INVALID_WINNER);
         }
 
         bet.status = 'verified';
@@ -132,8 +139,7 @@ export async function distributeWitnessCommission(betId: string, witnessCommissi
     const witnesses = await Witness.find({ betId, status: 'accepted' });
 
     if (witnesses.length === 0) {
-        console.log('No witnesses to distribute commission to.');
-        return;
+        throw new Error(StringConstants.NO_WITNESSES_FOR_COMMISSION)
     }
 
     const witnessShare = witnessCommission / witnesses.length;

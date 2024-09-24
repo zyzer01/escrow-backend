@@ -9,11 +9,17 @@ import { StringConstants } from '../../common/strings';
 import { createNotification } from '../notifications/notification.service';
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
+    if (!betData.creatorId || !betData.opponentId) {
+        throw new Error(StringConstants.CREATOR_OPPONENT_ID_MISSING);
+    }
     if (designatedWitnesses.length < 2 || designatedWitnesses.length > 3) {
-        throw new Error('You must designate between 2 and 3 witnesses.');
+    throw new Error(StringConstants.WITNESS_DESIGNATION_COUNT);
     }
 
-    // Validate witness IDs
+    if (designatedWitnesses.includes(betData.creatorId) || designatedWitnesses.includes(betData.opponentId)) {
+        throw new Error(StringConstants.INVALID_WITNESS_ASSIGNMENT);
+    }
+
     const validWitnessIds = await User.find({ _id: { $in: designatedWitnesses } }).distinct('_id');
     if (validWitnessIds.length !== designatedWitnesses.length) {
         throw new Error(StringConstants.WITNESS_DOES_NOT_EXIST);
@@ -52,11 +58,28 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
     return bet;
 }
 
-export async function updateBet(id: string, betData: Partial<IBet>): Promise<IBet | null> {
-    const bet = await Bet.findOne({ _id: Object(id) })
+/**
+ * Updates a bet.
+ * @param betId - The ID of the bet to update.
+ * @param betData - The update data of the bet.
+ */
 
-    return Bet.findByIdAndUpdate(bet._id, betData)
+export async function updateBet(betId: string, betData: Partial<IBet>): Promise<IBet | null> {
+    const bet = await Bet.findById(betId)
+    console.log(bet)
+    if (!bet) {
+        throw new Error(StringConstants.BET_NOT_FOUND)
+    }
+    if (bet.status !== 'pending') {
+        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_ENGAGED)
+    }
+    return Bet.findByIdAndUpdate(betId, betData)
 }
+
+/**
+ * Accepts a bet invitation.
+ * @param betId - The ID of the bet to accept.
+ */
 
 export async function acceptBetInvitation(invitationId: string, opponentStake: number, opponentPrediction: string): Promise<IBet | null> {
 
@@ -67,7 +90,7 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
     }
 
     if (!invitation || invitation.status !== 'pending') {
-        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_DECLINED)
+        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
     const bet = invitation.betId;
@@ -91,14 +114,32 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
     return invitation
 }
 
+/**
+ * Rejects a bet invitation.
+ * @param betId - The ID of the bet to reject.
+ */
+
 export async function rejectBetInvitation(invitationId: string): Promise<IBet | null> {
     const invitation = await BetInvitation.findById(invitationId)
+
+    if (!invitation) {
+        throw new Error(StringConstants.BET_INVITATION_NOT_FOUND)
+    }
+
+    if (invitation.status !== 'pending') {
+        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
+    }
 
     invitation.status = 'rejected';
     await invitation.save();
 
     return invitation
 }
+
+/**
+ * Engages the bet by setting the state to active.
+ * @param betId - The ID of the bet to engage.
+ */
 
 export async function engageBet(betId: string): Promise<IBet | null> {
 
@@ -129,7 +170,11 @@ export async function settleBet(betId: string): Promise<IBet | null> {
     const bet = await Bet.findById(betId);
     const winnerId = bet.winnerId.toString();
 
-    if (!bet || bet.status !== 'verified') {
+    if (!bet) {
+        throw new Error(StringConstants.BET_NOT_FOUND)
+    }
+
+    if (bet.status !== 'verified') {
         throw new Error(StringConstants.INVALID_BET_STATE)
     }
 
@@ -175,7 +220,10 @@ export async function settleBet(betId: string): Promise<IBet | null> {
 }
 
 
-
+/**
+ * Cancels the a bet.
+ * @param betId - The ID of the bet to cancel.
+ */
 export async function cancelBet(betId: string): Promise<IBet | null> {
 
     const bet = await Bet.findById(betId);
@@ -191,6 +239,38 @@ export async function cancelBet(betId: string): Promise<IBet | null> {
     return bet;
 };
 
+
+/**
+ * Reverses the outcome of a bet by paying out the new winner.
+ * Reuses the releaseFunds function.
+ * @param betId - The ID of the bet to reverse.
+ */
+export async function reverseBetOutcome(betId: string): Promise<void> {
+    const bet = await Bet.findById(betId);
+    if (!bet) {
+        throw new Error('Bet not found.');
+    }
+
+    const originalWinnerId = bet.winnerId;
+    if (!originalWinnerId) {
+        throw new Error('Bet does not have a winner to reverse.');
+    }
+
+    const newWinnerId = (bet.creatorId.toString() === originalWinnerId.toString())
+        ? bet.opponentId
+        : bet.creatorId;
+
+    if (!newWinnerId) {
+        throw new Error('No opponent available to reverse outcome.');
+    }
+
+    await releaseFunds(betId, newWinnerId);
+
+    bet.winnerId = newWinnerId;
+    await bet.save();
+
+    console.log(`Bet outcome reversed. New winner is user: ${newWinnerId}`);
+}
 
 export async function getBets(): Promise<IBet[]> {
     return Bet.find()

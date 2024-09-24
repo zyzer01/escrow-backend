@@ -1,7 +1,8 @@
 
 import { StringConstants } from '../../common/strings';
+import { reverseBetOutcome } from '../bets/bet.service';
 import Bet from '../bets/models/bet.model';
-import { refundFunds, reverseBetOutcome } from '../escrow/escrow.service';
+import { refundFunds } from '../escrow/escrow.service';
 import { createNotification } from '../notifications/notification.service';
 import User from '../users/user.model';
 import BetDispute, { IBetDispute } from './bet-dispute.model';
