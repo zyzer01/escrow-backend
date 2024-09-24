@@ -10,6 +10,7 @@ import { getAllDisputesHandler, logDisputeHandler, resolveDisputeHandler } from 
 import { fundWalletHandler, paystackCallbackHandler, verifyAccountNumberHandler, withdrawFromWalletHandler } from "./resources/wallet/wallet.controller";
 import { upload } from "./lib/middleware/multer";
 import { deleteFile, uploadFile } from "./file-upload/file-upload.controller";
+import { deleteBankAccountHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -40,7 +41,7 @@ function routes(app: Express) {
   app.post('/api/bets/accept', acceptBetHandler)
   app.post('/api/bets/reject', rejectBetHandler)
   app.post('/api/bets/:betId/engage', engageBetHandler)
-  app.post('/api/bets/:betId/settle', settleBetHandler)
+  app.post('/api/bets/settle', settleBetHandler)
   app.post('/api/bets/:betId/cancel', cancelBetHandler)
 
   app.post('/api/bets/witness/:witnessId/accept', witnessAcceptInviteHandler)
@@ -58,6 +59,11 @@ function routes(app: Express) {
   app.post('/api/wallet/fund-callback', paystackCallbackHandler);
   app.post('/api/wallet/verify-account', verifyAccountNumberHandler);
   app.post('/api/wallet/withdraw', withdrawFromWalletHandler);
+
+  app.post('/api/bank/save', saveBankAccountHandler)
+  app.get('/api/bank/:userId/accounts', saveBankAccountHandler)
+  app.post('/api/bank/set-primary', setPrimaryBankAccountHandler)
+  app.delete('/api/bank/:userId/accounts/:bankAccountId', deleteBankAccountHandler)
 
   app.post('/api/files/upload', upload.single('file'), uploadFile)
   app.delete('/api/files/:publicId/delete', deleteFile);

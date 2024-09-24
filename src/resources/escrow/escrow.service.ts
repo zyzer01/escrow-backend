@@ -43,11 +43,14 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<IEs
 
     const bet = await Bet.findById(betId);
 
-    if(!bet) {
+    if (!bet) {
         throw new Error(StringConstants.BET_NOT_FOUND)
     }
-    if (bet.status !== 'verified' && bet.status !== 'disputed') {
-        throw new Error(StringConstants.INVALID_BET_STATE);
+
+    if (bet.betType === 'with-witness') {
+        if (bet.status !== 'verified' && bet.status !== 'disputed') {
+            throw new Error(StringConstants.INVALID_BET_STATE);
+        }
     }
 
     const totalStake = (escrow.creatorStake || 0) + (escrow.opponentStake || 0);

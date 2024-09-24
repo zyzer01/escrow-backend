@@ -15,6 +15,7 @@ export interface IBet extends Document {
     creatorPrediction: string;
     opponentPrediction?: string;
   };
+  betType: 'with-witnesses' | 'without-witnesses'; 
 }
 
 const BetSchema: Schema = new Schema(
@@ -48,6 +49,7 @@ const BetSchema: Schema = new Schema(
       creatorPrediction: { type: String, required: true },
       opponentPrediction: { type: String },
     },
+    betType: { type: String, enum: ['with-witnesses', 'without-witnesses'], required: true },
   },
   { timestamps: true }
 );

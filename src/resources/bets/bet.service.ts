@@ -12,17 +12,21 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
     if (!betData.creatorId || !betData.opponentId) {
         throw new Error(StringConstants.CREATOR_OPPONENT_ID_MISSING);
     }
-    if (designatedWitnesses.length < 2 || designatedWitnesses.length > 3) {
-    throw new Error(StringConstants.WITNESS_DESIGNATION_COUNT);
+
+    // Allow bets without witnesses
+    if (designatedWitnesses.length > 0 && (designatedWitnesses.length < 2 || designatedWitnesses.length > 3)) {
+        throw new Error(StringConstants.WITNESS_DESIGNATION_COUNT);
     }
 
-    if (designatedWitnesses.includes(betData.creatorId) || designatedWitnesses.includes(betData.opponentId)) {
+    if (designatedWitnesses.length > 0 && (designatedWitnesses.includes(betData.creatorId) || designatedWitnesses.includes(betData.opponentId))) {
         throw new Error(StringConstants.INVALID_WITNESS_ASSIGNMENT);
     }
 
-    const validWitnessIds = await User.find({ _id: { $in: designatedWitnesses } }).distinct('_id');
-    if (validWitnessIds.length !== designatedWitnesses.length) {
-        throw new Error(StringConstants.WITNESS_DOES_NOT_EXIST);
+    if (designatedWitnesses.length > 0) {
+        const validWitnessIds = await User.find({ _id: { $in: designatedWitnesses } }).distinct('_id');
+        if (validWitnessIds.length !== designatedWitnesses.length) {
+            throw new Error(StringConstants.WITNESS_DOES_NOT_EXIST);
+        }
     }
 
     let neutralWitnessId = null;
@@ -37,14 +41,16 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
     bet.witnesses = designatedWitnesses;
     await bet.save();
 
-    for (const witnessId of designatedWitnesses) {
-        const witnessType = witnessId === neutralWitnessId ? 'neutral' : 'user-designated';
-        const witness = new Witness({
-            betId: bet._id,
-            userId: witnessId,
-            type: witnessType,
-        });
-        await witness.save();
+    if (designatedWitnesses.length > 0) {
+        for (const witnessId of designatedWitnesses) {
+            const witnessType = witnessId === neutralWitnessId ? 'neutral' : 'user-designated';
+            const witness = new Witness({
+                betId: bet._id,
+                userId: witnessId,
+                type: witnessType,
+            });
+            await witness.save();
+        }
     }
 
     const invitation = new BetInvitation({
@@ -57,6 +63,7 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
 
     return bet;
 }
+
 
 /**
  * Updates a bet.
@@ -144,15 +151,18 @@ export async function rejectBetInvitation(invitationId: string): Promise<IBet | 
 export async function engageBet(betId: string): Promise<IBet | null> {
 
     const bet = await Bet.findById(betId);
+    console.log(bet)
 
     if (bet.status !== 'accepted') {
         throw new Error(StringConstants.INVALID_BET_STATE)
     }
 
-    const pendingWitnesses = await Witness.find({ betId: bet._id, status: { $ne: 'accepted' } });
+    if (bet.betType === 'with-witnesses') {
+        const pendingWitnesses = await Witness.find({ betId: bet._id, status: { $ne: 'accepted' } });
 
-    if (pendingWitnesses.length > 0) {
-        throw new Error('Pending witnesses');
+        if (pendingWitnesses.length > 0) {
+            throw new Error('Pending witnesses');
+        }
     }
 
     bet.status = 'active';
@@ -164,26 +174,26 @@ export async function engageBet(betId: string): Promise<IBet | null> {
 /**
  * Settles the bet by determining the winner, releasing funds from escrow, and closing the bet.
  * @param betId - The ID of the bet to settle.
+ * @param winnerId - The ID of the winner to settle.
  */
 
-export async function settleBet(betId: string): Promise<IBet | null> {
+export async function settleBet(betId: string, winnerId: string): Promise<IBet | null> {
     const bet = await Bet.findById(betId);
-    const winnerId = bet.winnerId.toString();
 
     if (!bet) {
-        throw new Error(StringConstants.BET_NOT_FOUND)
+        throw new Error(StringConstants.BET_NOT_FOUND);
     }
 
-    if (bet.status !== 'verified') {
-        throw new Error(StringConstants.INVALID_BET_STATE)
+    if (bet.betType === 'with-witnesses' && bet.status !== 'verified') {
+        throw new Error(StringConstants.INVALID_BET_STATE);
     }
 
-    if (bet.status === 'disputed') {
-        throw new Error('Bet is currently disputed and cannot be engaged.');
+    if (bet.betType === 'without-witnesses' && bet.status !== 'active') {
+        throw new Error(StringConstants.INVALID_BET_STATE);
     }
 
-    if (!bet.winnerId) {
-        throw new Error(StringConstants.BET_WINNER_NOT_DETERMINED)
+    if (!winnerId) {
+        throw new Error(StringConstants.BET_WINNER_NOT_DETERMINED);
     }
 
     await releaseFunds(bet._id, winnerId);
@@ -200,12 +210,12 @@ export async function settleBet(betId: string): Promise<IBet | null> {
     }
 
     await createNotification(
-      winnerId,
-      "bet-settled",
-      StringConstants.NOTIFY_BET_WINNER_TITLE,
-      "You won! Congratulations"
+        winnerId,
+        "bet-settled",
+        StringConstants.NOTIFY_BET_WINNER_TITLE,
+        "You won! Congratulations"
     );
-    const loserId = bet.creatorId.toString() === winnerId ? bet.opponentId.toString() : bet.creatorId.toString();
+    const loserId = bet.creatorId.toString() === winnerId.toString() ? bet.opponentId.toString() : bet.creatorId.toString();
     await createNotification(
         loserId,
         "bet-settled",
@@ -214,10 +224,12 @@ export async function settleBet(betId: string): Promise<IBet | null> {
     );
 
     bet.status = 'closed';
+    bet.winnerId = winnerId;
     await bet.save();
 
     return bet;
 }
+
 
 
 /**

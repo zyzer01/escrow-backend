@@ -30,6 +30,18 @@ export function verifyToken(token: string): any {
     }
 }
 
+export function generateUniqueReference(maxLength: number = 12): string {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let reference = '';
+    
+    for (let i = 0; i < maxLength; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        reference += characters[randomIndex];
+    }
+    return reference;
+}
+
+
 export async function selectNeutralWitness() {
     const eligibleUsers = await User.find({ isEligibleForNeutralWitness: true });
     if (eligibleUsers.length === 0) {
