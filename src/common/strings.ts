@@ -1,4 +1,6 @@
 export enum StringConstants {
+  BANK_ACCOUNT_NOT_FOUND = "Bank account not found",
+  BANK_ACCOUNT_SAVED = "Bank account saved successfully",
   BET_NOT_FOUND = "Bet not found",
   BET_CANCELED_AND_REFUNDED = "Bet canceled and refunded",
   BET_INVITATION_NOT_FOUND = "Bet invitation not found",
@@ -49,6 +51,7 @@ export enum StringConstants {
   NOTIFY_BET_LOSER_TITLE = "Bet Settled",
   NOTIFY_BET_DISPUTE_CREATE_TITLE = "Bet Disputed",
   OPPONENT_YET_TO_ACCEPT = "Bet must be accepted by the opponent before witnesses can accept",
+  PRIMARY_BANK_ACCOUNT_SET = "Primary bank account set successfully",
   PASSWORD_RESET_SUCCESSFUL = "Password has been reset successfully.",
   REGISTRATION_ERROR = "An error occurred during registration",
   SIGNUP_SUCCESSFUL = "Confirmation code sent to email.",

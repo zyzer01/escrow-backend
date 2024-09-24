@@ -1,18 +1,12 @@
 import Wallet from './models/wallet.model';
 import WalletTransaction from './models/wallet-transaction.model';
-import dotenv from 'dotenv'
 import User from '../users/user.model';
 import axios from 'axios'
 import { StringConstants } from '../../common/strings';
 import { generateUniqueReference } from '../../utils';
-
-
-dotenv.config()
-const PAYSTACK_BASE_URL = 'https://api.paystack.co';
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
 
 const reference = generateUniqueReference()
-
 
 export async function payoutFunds(userId: string, amount: number, betId: string): Promise<void> {
   try {
@@ -39,7 +33,6 @@ export async function payoutFunds(userId: string, amount: number, betId: string)
     throw new Error('Payout failed');
   }
 };
-
 
 export async function refund(userId: string, amount: number, betId: string): Promise<void> {
   const userWallet = await Wallet.findOne({ userId });
@@ -81,7 +74,6 @@ export async function addToUserWallet(userId: string, amount: number, betId: str
   });
   await transaction.save();
 }
-
 
 export async function fundWallet(userId: string, amount: number, callbackUrl: string): Promise<any> {
   try {
