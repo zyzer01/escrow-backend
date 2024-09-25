@@ -1,5 +1,5 @@
 import { Express } from "express";
-import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, updateUserHandler } from "./resources/users/user.controller";
+import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, updateUserHandler } from "./resources/users/user.controller";
 import { forgotPasswordHandler, loginUserHandler, registerUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
 import { acceptBetHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
@@ -10,7 +10,7 @@ import { getAllDisputesHandler, logDisputeHandler, resolveDisputeHandler } from 
 import { fundWalletHandler, paystackCallbackHandler, verifyAccountNumberHandler, withdrawFromWalletHandler } from "./resources/wallet/wallet.controller";
 import { upload } from "./lib/middleware/multer";
 import { deleteFile, uploadFile } from "./file-upload/file-upload.controller";
-import { deleteBankAccountHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
+import { deleteBankAccountHandler, fetchAvailableBanksHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -25,6 +25,7 @@ function routes(app: Express) {
   app.post('/api/users', authenticateToken, authorizeRole('admin'), createUserHandler)
   app.put('/api/users/:id', authenticateToken, updateUserHandler)
   app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
+  app.post('/api/users/username', isUsernameTakenHandler)
 
   app.post('/auth/register', registerUserHandler)
   app.post('/auth/login', authLimiter, loginUserHandler)
@@ -60,6 +61,7 @@ function routes(app: Express) {
   app.post('/api/wallet/verify-account', verifyAccountNumberHandler);
   app.post('/api/wallet/withdraw', withdrawFromWalletHandler);
 
+  app.get('/api/banks', fetchAvailableBanksHandler)
   app.post('/api/bank/save', saveBankAccountHandler)
   app.get('/api/bank/:userId/accounts', saveBankAccountHandler)
   app.post('/api/bank/set-primary', setPrimaryBankAccountHandler)

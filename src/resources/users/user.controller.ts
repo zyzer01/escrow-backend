@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createUser, deleteUser, getAllUsers, getUser, updateUser } from './user.service';
+import { createUser, deleteUser, getAllUsers, getUser, isUsernameTaken, updateUser } from './user.service';
 
 export async function getAllUsersHandler(req: Request, res: Response) {
   const limit = parseInt(req.query.limit as string, 10)
@@ -11,7 +11,7 @@ export async function getAllUsersHandler(req: Request, res: Response) {
     res.status(200).json(users);
   } catch (error) {
     console.error(error)
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 }
 
@@ -24,7 +24,7 @@ export async function getUserHandler(req: Request, res: Response) {
     }
     res.status(200).json(user)
   } catch (error) {
-    res.status(500).json({ error: 'Internal Server Error' })
+    res.status(500).json({ message: 'Internal Server Error' })
   }
 }
 
@@ -34,7 +34,7 @@ export async function createUserHandler(req: Request, res: Response) {
     const user = await createUser(userData);
     res.status(201).json(user)
   } catch (error) {
-    res.status(500).json({ error: error });
+    res.status(500).json({ message: error });
   }
 }
 
@@ -44,11 +44,11 @@ export async function updateUserHandler(req: Request, res: Response) {
   try {
     const updatedUser = await updateUser(id, userData)
     if (!updatedUser) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: 'User not found' });
     }
     res.status(200).json(updatedUser)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update user' })
+    res.status(500).json({ message: 'Failed to update user' })
   }
 }
 
@@ -59,11 +59,25 @@ export async function deleteUserHandler(req: Request, res: Response): Promise<Re
     const deletedUser = await deleteUser(id);
 
     if (!deletedUser) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: 'User not found' });
     }
     return res.status(204).send();
   } catch (error) {
     console.error('Error deleting user:', error);
-    return res.status(500).json({ error: 'Failed to delete user' });
+    return res.status(500).json({ message: 'Failed to delete user' });
+  }
+}
+
+export async function isUsernameTakenHandler(req: Request, res: Response) {
+  const {username} = req.body
+  try {
+    const usernameTaken = await isUsernameTaken(username)
+    if (!usernameTaken) {
+      return res.status(200).json({ message: 'Username is yours' });
+    }
+    res.status(400).json({message: 'Username is taken'})
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Failed to update user' })
   }
 }

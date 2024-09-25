@@ -44,7 +44,7 @@ export async function registerUser(userData: IUser): Promise<IUser> {
   //   to: userData.email,
   //   subject: StringConstants.CONFIRM_EMAIL,
   //   template: 'confirm-email',
-  //   params: { username: userData.firstname, code: code },
+  //   params: { username: userData.firstName, code: code },
   // });
   return savedUser
 }

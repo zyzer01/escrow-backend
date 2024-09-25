@@ -20,3 +20,9 @@ export async function updateUser(id: string, userData: Partial<IUser>): Promise<
 export async function deleteUser(id: string): Promise<IUser | null> {
     return User.findByIdAndDelete(id)
 }
+
+export async function isUsernameTaken(username: string): Promise<boolean> {
+    const user = await User.findOne({ username });
+    return !!user;
+  }
+  

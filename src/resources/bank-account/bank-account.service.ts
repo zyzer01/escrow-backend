@@ -23,6 +23,21 @@ export async function verifyAccountNumber(accountNumber: string, bankCode: strin
   }
 }
 
+export async function fetchAvailableBanks(): Promise<any> {
+    try {
+      const response = await axios.get(`${PAYSTACK_BASE_URL}/bank`, {
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+        }
+      });
+  
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching available banks:', error);
+      throw new Error('Failed to fetch available banks');
+    }
+  }
+
 export async function saveBankAccount(userId: string, bankCode: string, accountNumber: string): Promise<IBankAccount> {
   const verifiedAccount = await verifyAccountNumber(accountNumber, bankCode);
 
@@ -45,7 +60,7 @@ export async function saveBankAccount(userId: string, bankCode: string, accountN
 }
 
 export async function getUserBankAccounts(userId: string): Promise<IBankAccount[]> {
-  const bankAccounts = await BankAccount.find({ userId }).sort({ isPrimary: -1 }); // Primary first
+  const bankAccounts = await BankAccount.find({ userId }).sort({ isPrimary: -1 });
   return bankAccounts;
 }
 

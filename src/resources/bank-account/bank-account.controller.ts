@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { saveBankAccount, getUserBankAccounts, setPrimaryBankAccount, deleteBankAccount } from './bank-account.service';
+import { saveBankAccount, getUserBankAccounts, setPrimaryBankAccount, deleteBankAccount, fetchAvailableBanks } from './bank-account.service';
 import { StringConstants } from '../../common/strings';
 
 // Controller to verify and save a user's bank account
@@ -42,6 +42,16 @@ export async function deleteBankAccountHandler(req: Request, res: Response) {
     try {
         await deleteBankAccount(userId, bankAccountId);
         return res.status(200).json({ message: 'Bank account deleted successfully' });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message });
+    }
+}
+
+
+export async function fetchAvailableBanksHandler(req: Request, res: Response) {
+    try {
+        const banks = await fetchAvailableBanks();
+        return res.status(200).json(banks);
     } catch (error: any) {
         return res.status(400).json({ error: error.message });
     }
