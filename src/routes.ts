@@ -2,7 +2,7 @@ import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, updateUserHandler } from "./resources/users/user.controller";
 import { forgotPasswordHandler, loginUserHandler, registerUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
-import { acceptBetHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
+import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
 import { getTotalStakesHandler } from "./resources/escrow/escrow.controller";
 import rateLimit from 'express-rate-limit';
@@ -40,8 +40,8 @@ function routes(app: Express) {
   app.get('/api/bets/:betId', getBetHandler)
   app.put('/api/bets/:betId', updateBetHandler)
   app.delete('/api/bets/:betId', deleteBetHandler)
-  app.post('/api/bets/accept', acceptBetHandler)
-  app.post('/api/bets/reject', rejectBetHandler)
+  app.post('/api/bets/accept', acceptBetInvitationHandler)
+  app.post('/api/bets/reject', rejectBetInvitationHandler)
   app.post('/api/bets/:betId/engage', engageBetHandler)
   app.post('/api/bets/settle', settleBetHandler)
   app.post('/api/bets/:betId/cancel', cancelBetHandler)

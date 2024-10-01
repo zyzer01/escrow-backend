@@ -9,35 +9,32 @@ export async function createBetHandler(req: Request, res: Response) {
         const bet = await createBet(betData, designatedWitnesses);
         res.status(201).json(bet);
     } catch (error: any) {
-        console.error(error)
-        switch (error.message) {
-          case StringConstants.WITNESS_DOES_NOT_EXIST:
+        if (error instanceof NotFoundError) {
             return res
-              .status(404)
-              .json({ error: StringConstants.WITNESS_DOES_NOT_EXIST });
-          case StringConstants.CREATOR_OPPONENT_ID_MISSING:
-            return res
-              .status(404)
-              .json({ error: StringConstants.CREATOR_OPPONENT_ID_MISSING });
-          case StringConstants.WITNESS_DESIGNATION_COUNT:
-            return res
-              .status(403)
-              .json({ error: StringConstants.WITNESS_DESIGNATION_COUNT });
-          case StringConstants.INVALID_WITNESS_ASSIGNMENT:
-            return res
-              .status(403)
-              .json({ error: StringConstants.INVALID_WITNESS_ASSIGNMENT });
-          case StringConstants.NO_NEUTRAL_WITNESS_FOUND:
-            return res
-              .status(404)
-              .json({ error: StringConstants.NO_NEUTRAL_WITNESS_FOUND });
-          default:
-            return res
-              .status(500)
-              .json({ error: StringConstants.FAILED_BET_CREATION });
+                .status(404)
+                .json({ error: StringConstants.WITNESS_DOES_NOT_EXIST });
         }
+        if (error instanceof MissingIdError) {
+            return res
+                .status(422)
+                .json({ error: StringConstants.CREATOR_OPPONENT_ID_MISSING });
+        }
+        if (error instanceof InsufficientError) {
+            return res
+                .status(409)
+                .json({ error: StringConstants.INSUFFICIENT_WITNESS_DESIGNATION });
+        }
+        if (error instanceof InvalidAssignmentError) {
+            return res
+                .status(403)
+                .json({ error: StringConstants.INVALID_WITNESS_ASSIGNMENT });
+        }
+        return res
+            .status(500)
+            .json({ error: StringConstants.FAILED_BET_CREATION });
     }
 }
+
 export async function getBetsHandler(req: Request, res: Response) {
     try {
         const bets = await getBets()
@@ -66,18 +63,15 @@ export async function updateBetHandler(req: Request, res: Response) {
     const { id } = req.params
     try {
         const bet = await updateBet(id, userData);
-
         res.status(200).json(bet)
     } catch (error: any) {
-        console.error(error)
-        switch (error.message) {
-            case StringConstants.BET_NOT_FOUND:
-                return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
-            case StringConstants.BET_ALREADY_ACCEPTED_ENGAGED:
-                return res.status(403).json({ error: StringConstants.BET_ALREADY_ACCEPTED_ENGAGED });
-            default:
-                return res.status(500).json({ error: StringConstants.FAILED_BET_UPDATE });
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
         }
+        if (error instanceof AlreadyDoneError) {
+            return res.status(409).json({ error: StringConstants.BET_ALREADY_ACCEPTED_ENGAGED });
+        }
+        return res.status(500).json({ error: StringConstants.FAILED_BET_UPDATE });
     }
 }
 
@@ -89,7 +83,6 @@ export async function deleteBetHandler(req: Request, res: Response): Promise<Res
         if (!bet) {
             return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
         }
-
         return res.status(204).send();
     } catch (error) {
         console.error('Error deleting bet:', error);
@@ -98,40 +91,36 @@ export async function deleteBetHandler(req: Request, res: Response): Promise<Res
 }
 
 
-export async function acceptBetHandler(req: Request, res: Response): Promise<Response> {
+export async function acceptBetInvitationHandler(req: Request, res: Response): Promise<Response> {
     const { invitationId, opponentStake, opponentPrediction } = req.body
     try {
         const invitation = await acceptBetInvitation(invitationId, opponentStake, opponentPrediction)
 
         return res.status(200).json(invitation)
     } catch (error: any) {
-        console.error(error)
-        switch (error.message) {
-            case StringConstants.BET_INVITATION_NOT_FOUND:
-                return res.status(404).json({ error: StringConstants.BET_INVITATION_NOT_FOUND });
-            case StringConstants.BET_ALREADY_ACCEPTED_REJECTED:
-                return res.status(403).json({ error: StringConstants.BET_ALREADY_ACCEPTED_REJECTED });
-            default:
-                return res.status(500).json({ error: StringConstants.FAILED_BET_ACCEPTANCE });
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ error: StringConstants.BET_INVITATION_NOT_FOUND });
         }
+        if (error instanceof AlreadyDoneError) {
+            return res.status(409).json({ error: StringConstants.BET_ALREADY_ACCEPTED_REJECTED });
+        }
+        return res.status(500).json({ error: StringConstants.FAILED_BET_ACCEPTANCE });
     }
 }
 
-export async function rejectBetHandler(req: Request, res: Response): Promise<Response> {
+export async function rejectBetInvitationHandler(req: Request, res: Response): Promise<Response> {
     const { invitationId } = req.body
     try {
         const invitation = await rejectBetInvitation(invitationId)
         return res.status(200).json(invitation)
     } catch (error: any) {
-        console.error(error)
-        switch (error.message) {
-            case StringConstants.BET_INVITATION_NOT_FOUND:
-                return res.status(404).json({ error: StringConstants.BET_INVITATION_NOT_FOUND });
-            case StringConstants.BET_ALREADY_ACCEPTED_REJECTED:
-                return res.status(403).json({ error: StringConstants.BET_ALREADY_ACCEPTED_REJECTED });
-            default:
-                return res.status(500).json({ error: StringConstants.FAILED_BET_REJECTION });
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ error: StringConstants.BET_INVITATION_NOT_FOUND });
         }
+        if (error instanceof AlreadyDoneError) {
+            return res.status(409).json({ error: StringConstants.BET_ALREADY_ACCEPTED_REJECTED });
+        }
+        return res.status(500).json({ error: StringConstants.FAILED_BET_REJECTION });
     }
 }
 
@@ -144,15 +133,13 @@ export async function engageBetHandler(req: Request, res: Response): Promise<Res
 
         return res.status(200).json(bet);
     } catch (error: any) {
-        console.error(error)
-        switch (error.message) {
-            case StringConstants.BET_NOT_FOUND:
-                return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
-            case StringConstants.INVALID_BET_STATE:
-                return res.status(403).json({ error: StringConstants.INVALID_BET_STATE });
-            default:
-                return res.status(500).json({ error: StringConstants.FAILED_BET_ENGAGEMENT });
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
         }
+        if (error instanceof InvalidStateError) {
+            return res.status(409).json({ error: StringConstants.INVALID_BET_STATE });
+        }
+        return res.status(500).json({ error: StringConstants.FAILED_BET_ENGAGEMENT });
     }
 }
 
@@ -163,17 +150,16 @@ export async function settleBetHandler(req: Request, res: Response): Promise<Res
 
         return res.status(200).json(bet);
     } catch (error: any) {
-        console.error(error)
-        switch (error.message) {
-            case StringConstants.BET_NOT_FOUND:
-                return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
-            case StringConstants.INVALID_BET_STATE:
-                return res.status(403).json({ error: StringConstants.INVALID_BET_STATE });
-            case StringConstants.BET_WINNER_NOT_DETERMINED:
-                return res.status(403).json({ error: StringConstants.BET_WINNER_NOT_DETERMINED });
-            default:
-                return res.status(500).json({ error: StringConstants.FAILED_BET_SETTLEMENT });
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
         }
+        if (error instanceof InvalidStateError) {
+            return res.status(409).json({ error: StringConstants.INVALID_BET_STATE });
+        }
+        if (error instanceof NotImplementedError) {
+            return res.status(409).json({ error: StringConstants.BET_WINNER_NOT_DETERMINED });
+        }
+        return res.status(500).json({ error: StringConstants.FAILED_BET_SETTLEMENT });
     }
 }
 
@@ -186,10 +172,10 @@ export async function cancelBetHandler(req: Request, res: Response) {
         res.status(200).json(bet);
     } catch (error: any) {
         console.error(error)
-        if (error.message === StringConstants.INVALID_BET_STATE) {
-            return res
-                .status(403)
-                .json({ error: StringConstants.INVALID_BET_STATE });
+        if (error instanceof InvalidStateError) {
+          return res
+            .status(403)
+            .json({ error: StringConstants.INVALID_BET_STATE });
         }
         res.status(500).json({ error: StringConstants.FAILED_BET_CANCELATION });
     }

@@ -2,7 +2,7 @@ import { StringConstants } from "../../../common/strings";
 import User from "../../users/user.model";
 import { addToUserWallet, payoutFunds } from "../../wallet/wallet.service";
 import Bet from "../models/bet.model";
-import Witness from './witness.model'; // Assuming the Witness model is in a file named models/Witness.ts
+import Witness from './witness.model';
 
 /**
  * Accepts witness role for bet
@@ -12,26 +12,19 @@ export async function acceptWitnessInvite(witnessId: string): Promise<Response> 
 
     const witness = await Witness.findById(witnessId);
 
-    console.log(witness);
-
-
     if (!witness) {
-        throw new Error(StringConstants.WITNESS_NOT_FOUND)
+        throw new NotFoundError(StringConstants.WITNESS_NOT_FOUND)
     }
-
     if (witness.status !== 'pending') {
-        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
+        throw new AlreadyDoneError(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
-
 
     const bet = await Bet.findById(witness.betId);
-
     if (!bet) {
-        throw new Error(StringConstants.BET_NOT_FOUND);
+        throw new NotFoundError(StringConstants.BET_NOT_FOUND);
     }
-
     if (bet.status !== 'accepted') {
-        throw new Error(StringConstants.OPPONENT_YET_TO_ACCEPT);
+        throw new InvalidStateError(StringConstants.OPPONENT_YET_TO_ACCEPT);
     }
 
     witness.status = 'accepted';
@@ -49,11 +42,10 @@ export async function rejectWitnessInvite(witnessId: string): Promise<Response> 
     const witness = await Witness.findById(witnessId);
 
     if (!witness) {
-        throw new Error(StringConstants.WITNESS_NOT_FOUND)
+        throw new NotFoundError(StringConstants.WITNESS_NOT_FOUND)
     }
-
     if (witness.status !== 'pending') {
-        throw new Error(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
+        throw new AlreadyDoneError(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
     witness.status = 'recused';
@@ -71,11 +63,10 @@ export async function castVote(betId: string, witnessId: string, vote: string) {
     const witness = await Witness.findOne({ betId, userId: witnessId });
 
     if (!witness) {
-        throw new Error(StringConstants.WITNESS_NOT_FOUND)
+        throw new NotFoundError(StringConstants.WITNESS_NOT_FOUND)
     }
-
     if (witness.status !== 'accepted') {
-        throw new Error(StringConstants.WITNESS_INVITE_REJECTED)
+        throw new InvalidStateError(StringConstants.WITNESS_INVITE_REJECTED)
     }
 
     witness.vote = vote;
@@ -94,7 +85,7 @@ export async function determineWinner(betId: string): Promise<string | null> {
     const witnesses = await Witness.find({ betId, status: 'accepted' });
 
     if (witnesses.length < 3) {
-        throw new Error(StringConstants.INSUFFICIENT_VOTES);
+        throw new InsufficientVotesError(StringConstants.INSUFFICIENT_VOTES);
     }
 
     const voteCount = { creator: 0, opponent: 0 };
@@ -131,14 +122,14 @@ export async function determineWinner(betId: string): Promise<string | null> {
     const bet = await Bet.findById(betId);
     if (winner) {
         if (!bet) {
-            throw new Error(StringConstants.BET_NOT_FOUND);
+            throw new NotFoundError(StringConstants.BET_NOT_FOUND);
         }
         if (winner === 'creator') {
             bet.winnerId = bet.creatorId;
         } else if (winner === 'opponent') {
             bet.winnerId = bet.opponentId;
         } else {
-            throw new Error(StringConstants.INVALID_WINNER);
+            throw new InvalidStateError(StringConstants.INVALID_WINNER);
         }
 
         bet.status = 'verified';
