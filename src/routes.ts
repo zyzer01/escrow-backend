@@ -11,6 +11,7 @@ import { fundWalletHandler, paystackCallbackHandler, verifyAccountNumberHandler,
 import { upload } from "./lib/middleware/multer";
 import { deleteFile, uploadFile } from "./file-upload/file-upload.controller";
 import { deleteBankAccountHandler, fetchAvailableBanksHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
+import { getUserNotificationsHandler, markAsReadHandler } from "./resources/notifications/notification.controller";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -55,6 +56,9 @@ function routes(app: Express) {
   app.post('/api/dispute/log', logDisputeHandler)
   app.post('/api/dispute/resolve', resolveDisputeHandler)
   app.get("/api/dispute", getAllDisputesHandler);
+
+  app.get("/api/notifications", getUserNotificationsHandler)
+  app.post("/api/notifications/:id/read", markAsReadHandler)
 
   app.post('/api/wallet/fund', fundWalletHandler);
   app.post('/api/wallet/fund-callback', paystackCallbackHandler);

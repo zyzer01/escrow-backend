@@ -91,7 +91,7 @@ export async function forgotPassword(email: string): Promise<void> {
     to: user.email,
     subject: 'Reset your password',
     template: 'forgot-password',
-    params: { username: user.firstname, code: resetToken },
+    params: { username: user.firstName, code: resetToken },
   });
 }
 
@@ -117,7 +117,7 @@ export async function resetPassword(resetToken: string, newPassword: string): Pr
     to: user.email,
     subject: 'Password Changed Successfully',
     template: 'changed-password',
-    params: { username: user.firstname },
+    params: { username: user.firstName },
   });
 }
 
@@ -152,7 +152,7 @@ export async function requestEmailChange(email: string): Promise<void> {
     to: user.email,
     subject: 'Change Account Email',
     template: 'email-change-request',
-    params: { username: user.firstname, code: resetToken },
+    params: { username: user.firstName, code: resetToken },
   });
 }
 
@@ -178,7 +178,7 @@ export async function changeEmail(resetToken: string, newPassword: string): Prom
     to: user.email,
     subject: 'Email Changed Successfully',
     template: 'changed-password',
-    params: { username: user.firstname },
+    params: { username: user.firstName },
   });
 }
 
@@ -207,7 +207,7 @@ export async function verifyEmail(code: number): Promise<void> {
     to: user.email,
     subject: 'Welcome to Escrow Bet',
     template: 'welcome',
-    params: { username: user.firstname },
+    params: { username: user.firstName },
   });
 }
 
@@ -237,7 +237,7 @@ export async function resendEmailVerificationCode(email: string): Promise<void> 
     to: user.email,
     subject: 'Confirm your email',
     template: 'resend-code',
-    params: { username: user.firstname, code: newVerificationCode },
+    params: { username: user.firstName, code: newVerificationCode },
   });
 }
 

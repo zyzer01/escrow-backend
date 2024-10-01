@@ -1,4 +1,5 @@
 import { StringConstants } from "../../../common/strings";
+import User from "../../users/user.model";
 import { addToUserWallet, payoutFunds } from "../../wallet/wallet.service";
 import Bet from "../models/bet.model";
 import Witness from './witness.model'; // Assuming the Witness model is in a file named models/Witness.ts
@@ -113,6 +114,19 @@ export async function determineWinner(betId: string): Promise<string | null> {
     } else if (voteCount.opponent > voteCount.creator) {
         winner = 'opponent';
     }
+
+    await Promise.all(witnesses.map(async (witness) => {
+        const correctVote = (winner === 'creator' && witness.vote === 'creator') ||
+            (winner === 'opponent' && witness.vote === 'opponent');
+
+        if (correctVote) {
+            const user = await User.findById(witness.userId);
+            if (user) {
+                user.reputation_score = (user.reputation_score || 0) + 10;
+                await user.save();
+            }
+        }
+    }));
 
     const bet = await Bet.findById(betId);
     if (winner) {

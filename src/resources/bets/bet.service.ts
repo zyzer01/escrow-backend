@@ -118,6 +118,8 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
         status: 'locked'
     });
 
+    await createNotification([bet.opponentId], "bet-invite", "Bet Invite", `Your have been invited to a bet "${bet.title}"`);
+
     return invitation
 }
 
@@ -167,6 +169,13 @@ export async function engageBet(betId: string): Promise<IBet | null> {
 
     bet.status = 'active';
     await bet.save();
+    
+    await createNotification(
+      [bet.creatorId, bet.opponentId],
+      "bet-engaged",
+      "Bet activated",
+      `Your bet ${bet.title} has been activated`
+    );
 
     return bet
 }
@@ -209,23 +218,23 @@ export async function settleBet(betId: string, winnerId: string): Promise<IBet |
         await User.updateOne({ _id: witness.userId }, { $inc: { bets_witnessed: 1 } });
     }
 
+    bet.status = 'closed';
+    bet.winnerId = winnerId;
+    await bet.save();
+
     await createNotification(
-        winnerId,
+        [winnerId],
         "bet-settled",
         StringConstants.NOTIFY_BET_WINNER_TITLE,
         "You won! Congratulations"
     );
     const loserId = bet.creatorId.toString() === winnerId.toString() ? bet.opponentId.toString() : bet.creatorId.toString();
     await createNotification(
-        loserId,
+        [loserId],
         "bet-settled",
         StringConstants.NOTIFY_BET_LOSER_TITLE,
         "You lost the bet. What is cashout?"
     );
-
-    bet.status = 'closed';
-    bet.winnerId = winnerId;
-    await bet.save();
 
     return bet;
 }
@@ -247,6 +256,8 @@ export async function cancelBet(betId: string): Promise<IBet | null> {
 
     bet.status = 'canceled';
     await bet.save();
+
+    await createNotification([bet.creatorId, bet.opponentId], "bet-cancelled", "You cancelled a bet", `Your bet "${bet.title}" has been cancelled`);
 
     return bet;
 };
