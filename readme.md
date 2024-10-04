@@ -16,3 +16,24 @@
 [x] Wallet funding: Fund wallet
 [x] Complete Wallet funding and withdrawal (paystack)
 [x] Save user withdrawal account
+[] Implement OAUTH
+
+# Installation
+
+- `npm install`
+
+
+# Project Initial Setup
+
+Initialize package.json
+- `npm init`
+
+Install typescript
+- `npm i -D typescript`
+
+Install mongoose
+- `npm i mongoose --save`
+
+
+
+
