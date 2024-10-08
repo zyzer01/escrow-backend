@@ -3,8 +3,8 @@ import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
-import { ISendMail } from '../utils/interface';
-import { generateVerificationCode } from '../utils';
+import { ISendMail } from '../lib/utils/interface';
+import { generateVerificationCode } from '../lib/utils/auth';
 
 dotenv.config();
 

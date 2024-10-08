@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { acceptWitnessInvite, castVote, determineWinner, rejectWitnessInvite } from "./witness.service";
-import { selectNeutralWitness } from "../../../utils";
+import { selectNeutralWitness } from "../../../lib/utils/auth";
 import { StringConstants } from "../../../common/strings";
 
 export async function witnessAcceptInviteHandler(req: Request, res: Response): Promise<Response> {

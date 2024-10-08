@@ -1,4 +1,4 @@
-import { IFileUploadProvider } from "../utils/interface";
+import { IFileUploadProvider } from "../lib/utils/interface";
 import { CloudinaryUploadProvider } from "./file-upload.provider";
 
 export class FileUploadService {

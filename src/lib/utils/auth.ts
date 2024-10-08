@@ -1,18 +1,16 @@
-import { saltRounds, verificationCodeExpiry } from "../config";
+import { saltRounds, verificationCodeExpiry } from "../../config";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
-import User from "../resources/users/user.model";
 
 dotenv.config()
 
 const JWT_SECRET = process.env.JWT_SECRET as string
 
-export const generateOTP = (length = 4) =>
-    Math.floor(
-        Math.random() * (Math.pow(10, length) - 1 - Math.pow(10, length - 1) + 1),
-    ) + Math.pow(10, length - 1);
+export const generateOTP = (): number => {
+    return Math.floor(100000 + Math.random() * 900000);
+};
 
 export const hashPassword = (password: string) => bcrypt.hash(password, saltRounds)
 
@@ -39,14 +37,4 @@ export function generateUniqueReference(maxLength: number = 12): string {
         reference += characters[randomIndex];
     }
     return reference;
-}
-
-
-export async function selectNeutralWitness() {
-    const eligibleUsers = await User.find({ isEligibleForNeutralWitness: true });
-    if (eligibleUsers.length === 0) {
-        throw new Error('No eligible neutral witnesses found.');
-    }
-    const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
-    return eligibleUsers[randomIndex];
 }

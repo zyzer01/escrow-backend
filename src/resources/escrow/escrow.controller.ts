@@ -18,7 +18,7 @@ export async function releaseFundsHandler(req: Request, res: Response) {
   try {
     const escrow = await releaseFunds(betId, winnerId);
     res.status(200).json(escrow);
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof NotFoundError) {
       return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
     }
@@ -38,7 +38,7 @@ export async function getTotalStakesHandler(req: Request, res: Response) {
   try {
     const escrow = await getTotalStakes(id);
     return res.status(200).json(escrow)
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof NotFoundError) {
       return res.status(404).json({ error: StringConstants.ESCROW_NOT_FOUND })
     }

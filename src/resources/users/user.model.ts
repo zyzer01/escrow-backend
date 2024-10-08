@@ -13,20 +13,21 @@ export interface IUser extends Document {
   bets_participated: number;
   bets_witnessed: number;
   is_active: boolean;
-  isEmailVerified: boolean,
-  emailVerificationCode: number | null,
-  emailVerificationCodeExpiry: Date | null,
-  resetPasswordToken: string | null,
-  resetPasswordTokenExpiry: Date | null,
-  changeEmailToken: string | null,
-  changeEmailTokenExpiry: Date | null,
+  isEmailVerified: boolean;
+  emailVerificationCode: number | null;
+  emailVerificationCodeExpiry: Date | null;
+  resetPasswordToken: string | null;
+  resetPasswordTokenExpiry: Date | null;
+  changeEmailToken: string | null;
+  changeEmailTokenExpiry: Date | null;
   isEligibleForNeutralWitness: boolean;
+  registrationComplete: boolean;
 }
 
 const UserSchema = new Schema<IUser>({
-  username: { type: String, required: true, unique: true, min: [3, 'Username cannot be less than 3 characters'] },
+  username: { type: String, unique: true, sparse: true, min: [3, 'Username cannot be less than 3 characters'] },
   email: { type: String, required: true, unique: true, match: [/.+\@.+\..+/, 'Invalid email'] },
-  password: { type: String, required: true, min: [6, 'Password cannot be less than 6 characters'] },
+  password: { type: String, min: [6, 'Password cannot be less than 6 characters'] },
   firstName: { type: String },
   lastName: { type: String },
   phone_number: { type: String },
@@ -43,6 +44,7 @@ const UserSchema = new Schema<IUser>({
   changeEmailToken: {type: String},
   changeEmailTokenExpiry: {type: Date},
   isEligibleForNeutralWitness: { type: Boolean, default: false },
+  registrationComplete: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

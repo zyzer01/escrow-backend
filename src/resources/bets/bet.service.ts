@@ -3,10 +3,10 @@ import BetInvitation from './models/bet-invitation.model';
 import Bet, { IBet } from './models/bet.model'
 import Witness from './witnesses/witness.model';
 import { lockFunds, refundFunds, releaseFunds } from '../escrow/escrow.service';
-import { selectNeutralWitness } from '../../utils';
 import User from '../users/user.model';
 import { StringConstants } from '../../common/strings';
 import { createNotification } from '../notifications/notification.service';
+import { selectNeutralWitness } from '../../lib/utils/neutralWitness';
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     if (!betData.creatorId || !betData.opponentId) {

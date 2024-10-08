@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import User, { IUser } from '../users/user.model';
 import dotenv from 'dotenv'
 import { sendEmail } from '../../mail/mail.service';
-import { calculateVerificationCodeExpiryTime, generateOTP, generateVerificationCode, hashPassword } from '../../utils';
+import { calculateVerificationCodeExpiryTime, generateOTP, generateVerificationCode, hashPassword } from '../../lib/utils/auth';
 import { StringConstants } from '../../common/strings';
 import Wallet from '../wallet/models/wallet.model';
 
@@ -12,41 +12,108 @@ dotenv.config()
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 /*
-  Register User
+  Initiate Registration
 */
 
-export async function registerUser(userData: IUser): Promise<IUser> {
-  const existingUser = await User.findOne({
-    $or: [{ email: userData.email }, { username: userData.username }]
+export async function initiateRegistration(email: string) {
+  let user = await User.findOne({ email });
+
+  if (user) {
+    if (user.isEmailVerified && user.registrationComplete) {
+      throw new Error('Email already exists and registration is complete');
+    } else {
+      const code = generateOTP();
+      const codeExpiry = calculateVerificationCodeExpiryTime();
+
+      user.emailVerificationCode = code;
+      user.emailVerificationCodeExpiry = codeExpiry;
+    }
+  } else {
+    const code = generateOTP();
+    const codeExpiry = calculateVerificationCodeExpiryTime();
+
+    user = new User({
+      email,
+      emailVerificationCode: code,
+      emailVerificationCodeExpiry: codeExpiry,
+      isEmailVerified: false,
+    });
+  }
+
+  await user.save();
+
+  await sendEmail({
+    to: email,
+    subject: StringConstants.CONFIRM_EMAIL,
+    template: 'confirm-email',
+    params: { code: user.emailVerificationCode },
   });
 
-  if (existingUser) {
-    throw new Error('email or username already exists');
+  return;
+}
+
+/*
+  Verify User Email Address
+*/
+
+export async function verifyEmail(code: number): Promise<void> {
+  const user = await User.findOne({emailVerificationCode: code, emailVerificationCodeExpiry: { $gt: new Date() }})
+
+  if(!user) {
+    throw new Error(StringConstants.INVALID_EXPIRED_TOKEN)
+  }
+
+  if(user.isEmailVerified) {
+    throw new Error(StringConstants.EMAIL_ALREADY_VERIFIED)
+  }
+
+  user.isEmailVerified = true
+  user.emailVerificationCode = null;
+  user.emailVerificationCodeExpiry = null;
+
+  user.save()
+}
+
+/*
+  Complete Registration
+*/
+
+export async function completeRegistration(userData: IUser): Promise<IUser> {
+  const user = await User.findOne({ email: userData.email, isEmailVerified: true });
+
+  if (!user) {
+    throw new NotFoundError(StringConstants.USER_NOT_FOUND);
+  }
+  if (!user.isEmailVerified) {
+    throw new InvalidStateError(StringConstants.EMAIL_NOT_VERIFIED);
   }
 
   const hashedPassword = await hashPassword(userData.password);
 
-  const code = generateOTP();
-  const codeExpiry = calculateVerificationCodeExpiryTime()
+  user.username = userData.username;
+  user.password = hashedPassword;
+  user.firstName = userData.firstName;
+  user.lastName = userData.lastName;
+  user.phone_number = userData.phone_number;
+  user.registrationComplete = true;
 
-  const newUser = new User({ ...userData, password: hashedPassword, role: userData.role || 'user', emailVerificationCode: code, emailVerificationCodeExpiry: codeExpiry });
-  const savedUser = await newUser.save();
+  const savedUser = await user.save();
 
   const newWallet = new Wallet({
     userId: savedUser._id,
     balance: 0,
     transactionHistory: [],
   });
-
   await newWallet.save();
 
-  // await sendEmail({
-  //   to: userData.email,
-  //   subject: StringConstants.CONFIRM_EMAIL,
-  //   template: 'confirm-email',
-  //   params: { username: userData.firstName, code: code },
-  // });
-  return savedUser
+  await sendEmail({
+    to: savedUser.email,
+    subject: 'Welcome to Escrow Bet',
+    template: 'welcome',
+    params: { username: savedUser.firstName },
+  });
+
+  return savedUser;
 }
 
 /*
@@ -178,35 +245,6 @@ export async function changeEmail(resetToken: string, newPassword: string): Prom
     to: user.email,
     subject: 'Email Changed Successfully',
     template: 'changed-password',
-    params: { username: user.firstName },
-  });
-}
-
-/*
-  Verify User Email Address
-*/
-
-export async function verifyEmail(code: number): Promise<void> {
-  const user = await User.findOne({emailVerificationCode: code, emailVerificationCodeExpiry: { $gt: new Date() }})
-
-  if(!user) {
-    throw new Error(StringConstants.INVALID_EXPIRED_TOKEN)
-  }
-
-  if(user.isEmailVerified) {
-    throw new Error(StringConstants.EMAIL_ALREADY_VERIFIED)
-  }
-
-  user.isEmailVerified = true
-  user.emailVerificationCode = null;
-  user.emailVerificationCodeExpiry = null;
-
-  user.save()
-
-  await sendEmail({
-    to: user.email,
-    subject: 'Welcome to Escrow Bet',
-    template: 'welcome',
     params: { username: user.firstName },
   });
 }

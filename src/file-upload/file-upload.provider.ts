@@ -1,4 +1,4 @@
-import { IFileUploadProvider } from '../utils/interface';
+import { IFileUploadProvider } from '../lib/utils/interface';
 import cloudinary from '../config/cloudinary.config';
 
 export class CloudinaryUploadProvider implements IFileUploadProvider {

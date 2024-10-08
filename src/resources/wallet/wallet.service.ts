@@ -3,7 +3,7 @@ import WalletTransaction from './models/wallet-transaction.model';
 import User from '../users/user.model';
 import axios from 'axios'
 import { StringConstants } from '../../common/strings';
-import { generateUniqueReference } from '../../utils';
+import { generateUniqueReference } from '../../lib/utils/auth';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
 
 const reference = generateUniqueReference()

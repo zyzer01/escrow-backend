@@ -1,6 +1,6 @@
 import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, updateUserHandler } from "./resources/users/user.controller";
-import { forgotPasswordHandler, loginUserHandler, registerUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
+import { completeRegistrationHandler, forgotPasswordHandler, initiateRegistrationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
 import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
@@ -16,7 +16,7 @@ import { getUserNotificationsHandler, markAsReadHandler } from "./resources/noti
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // Limit each IP to 5 requests per windowMs
-  message: 'Too many login attempts, please try again after 15 minutes',
+  message: "Too many login attempts, please try again after 15 minutes",
 });
 
 
@@ -28,7 +28,8 @@ function routes(app: Express) {
   app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
   app.post('/api/users/username', isUsernameTakenHandler)
 
-  app.post('/auth/register', registerUserHandler)
+  app.post('/auth/initiate', initiateRegistrationHandler)
+  app.post('/auth/register', completeRegistrationHandler)
   app.post('/auth/login', authLimiter, loginUserHandler)
   app.post('/auth/verify-email', verifyEmailHandler)
   app.post('/auth/resend-email-verificationCode', resendEmailVerificationCodeHandler)
