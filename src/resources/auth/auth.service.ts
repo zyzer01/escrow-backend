@@ -106,7 +106,7 @@ export async function resetPassword(resetToken: string, newPassword: string): Pr
     throw new Error(StringConstants.INVALID_EXPIRED_TOKEN)
   }
 
-  const hashedPassword = hashPassword(newPassword)
+  const hashedPassword = hashPassword(newPassword)                          
   user.password = hashedPassword;
   user.resetPasswordToken = null
   user.resetPasswordTokenExpiry = null

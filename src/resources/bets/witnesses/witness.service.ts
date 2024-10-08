@@ -85,7 +85,7 @@ export async function determineWinner(betId: string): Promise<string | null> {
     const witnesses = await Witness.find({ betId, status: 'accepted' });
 
     if (witnesses.length < 3) {
-        throw new InsufficientVotesError(StringConstants.INSUFFICIENT_VOTES);
+        throw new InsufficientError(StringConstants.INSUFFICIENT_VOTES);
     }
 
     const voteCount = { creator: 0, opponent: 0 };

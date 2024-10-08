@@ -17,6 +17,7 @@
 [x] Complete Wallet funding and withdrawal (paystack)
 [x] Save user withdrawal account
 [] Implement OAUTH
+[] Make Sign up flow email-first
 
 # Installation
 
