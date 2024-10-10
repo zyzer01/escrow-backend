@@ -22,7 +22,7 @@ export async function deleteUser(id: string): Promise<IUser | null> {
 }
 
 export async function isUsernameTaken(username: string): Promise<boolean> {
-    const user = await User.findOne({ username });
+    const normalizedUsername = username.toLowerCase();
+    const user = await User.findOne({ username: normalizedUsername }, { _id: 1 }).lean();
     return !!user;
-  }
-  
+}
