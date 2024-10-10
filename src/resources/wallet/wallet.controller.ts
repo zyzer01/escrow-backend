@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
-import { paystackCallback, verifyAccountNumber } from "./wallet.service";
+import { paystackCallback, updateWalletBalance, verifyAccountNumber } from "./wallet.service";
 import { fundWallet, withdrawFromWallet } from './wallet.service';
-import Wallet from "./models/wallet.model";
-
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-
+import { StringConstants } from "../../common/strings";
 
 export async function verifyAccountNumberHandler(req: Request, res: Response): Promise<void> {
     const { accountNumber, bankCode } = req.body;
@@ -50,14 +47,16 @@ export async function withdrawFromWalletHandler(req: Request, res: Response): Pr
 }
 
 
+export async function updateWalletBalanceHandler(req: Request, res: Response): Promise<void> {
+    const { userId, amount } = req.body;
 
-export async function updateWalletBalance(email: string, amount: number): Promise<void> {
-    const wallet = await Wallet.findOne({ email });
-
-    if (!wallet) {
-        throw new Error('Wallet not found');
+    try {
+        const data = await updateWalletBalance(userId, amount);
+        res.status(200).json({ message: 'Account Funded', data });
+    } catch (error: any) {
+        if (error instanceof NotFoundError) {
+            res.status(404).json({ error: StringConstants.WALLET_NOT_FOUND })
+        }
+        res.status(500).json({ message: error.message });
     }
-
-    wallet.balance += amount;  // Add the funded amount to the balance
-    await wallet.save();
 }

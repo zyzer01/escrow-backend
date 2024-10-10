@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../../utils';
+import { verifyToken } from '../utils/auth';
 
 
 export function authenticateToken(req: Request, res: Response, next: NextFunction) {

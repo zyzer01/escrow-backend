@@ -6,7 +6,7 @@ export interface ITransaction extends Document {
   type: 'fund' | 'payout' | 'refund' | 'commission' | 'withdrawal';
   reference: string;
   description: string;
-  betId: Types.ObjectId;
+  betId?: Types.ObjectId;
 }
 
 const TransactionSchema: Schema = new Schema(

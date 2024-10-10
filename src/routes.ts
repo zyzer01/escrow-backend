@@ -1,8 +1,8 @@
-import { Express } from "express";
+import { Express, Request, Response } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, updateUserHandler } from "./resources/users/user.controller";
-import { forgotPasswordHandler, loginUserHandler, registerUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
+import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
-import { acceptBetHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
+import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
 import { getTotalStakesHandler } from "./resources/escrow/escrow.controller";
 import rateLimit from 'express-rate-limit';
@@ -11,23 +11,46 @@ import { fundWalletHandler, paystackCallbackHandler, verifyAccountNumberHandler,
 import { upload } from "./lib/middleware/multer";
 import { deleteFile, uploadFile } from "./file-upload/file-upload.controller";
 import { deleteBankAccountHandler, fetchAvailableBanksHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
+import { getUserNotificationsHandler, markAsReadHandler } from "./resources/notifications/notification.controller";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // Limit each IP to 5 requests per windowMs
-  message: 'Too many login attempts, please try again after 15 minutes',
+  handler: (req: Request, res: Response) => {
+    const retryAfter = req.rateLimit?.resetTime
+      ? Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000)
+      : null;
+
+    let message: string;
+
+    if (retryAfter) {
+      const minutes = Math.floor(retryAfter / 60);
+      const seconds = retryAfter % 60;
+      message = `Too many attempts. Please try again after ${minutes} minutes and ${seconds} seconds.`;
+    } else {
+      message = "Too many attempts. Please try again later.";
+    }
+
+    res.status(429).json({ 
+      message, 
+      statusCode: 429,
+      path: req.originalUrl,
+      timestamp: new Date().toISOString(),
+    });
+  },
 });
 
 
 function routes(app: Express) {
-  app.get('/api/users', getAllUsersHandler)
-  app.get('/api/users/:id', authenticateToken, getUserHandler)
-  app.post('/api/users', authenticateToken, authorizeRole('admin'), createUserHandler)
-  app.put('/api/users/:id', authenticateToken, updateUserHandler)
-  app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
-  app.post('/api/users/username', isUsernameTakenHandler)
+  app.get('/users', getAllUsersHandler)
+  app.get('/users/:id', authenticateToken, getUserHandler)
+  app.post('/users', authenticateToken, authorizeRole('admin'), createUserHandler)
+  app.put('/users/:id', authenticateToken, updateUserHandler)
+  app.delete('/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
+  app.post('/users/username', isUsernameTakenHandler)
 
-  app.post('/auth/register', registerUserHandler)
+  app.post('/auth/request-email-verification', authLimiter, requestEmailVerificationHandler)
+  app.post('/auth/complete-profile', completeRegistrationHandler)
   app.post('/auth/login', authLimiter, loginUserHandler)
   app.post('/auth/verify-email', verifyEmailHandler)
   app.post('/auth/resend-email-verificationCode', resendEmailVerificationCodeHandler)
@@ -39,8 +62,8 @@ function routes(app: Express) {
   app.get('/api/bets/:betId', getBetHandler)
   app.put('/api/bets/:betId', updateBetHandler)
   app.delete('/api/bets/:betId', deleteBetHandler)
-  app.post('/api/bets/accept', acceptBetHandler)
-  app.post('/api/bets/reject', rejectBetHandler)
+  app.post('/api/bets/accept', acceptBetInvitationHandler)
+  app.post('/api/bets/reject', rejectBetInvitationHandler)
   app.post('/api/bets/:betId/engage', engageBetHandler)
   app.post('/api/bets/settle', settleBetHandler)
   app.post('/api/bets/:betId/cancel', cancelBetHandler)
@@ -55,6 +78,9 @@ function routes(app: Express) {
   app.post('/api/dispute/log', logDisputeHandler)
   app.post('/api/dispute/resolve', resolveDisputeHandler)
   app.get("/api/dispute", getAllDisputesHandler);
+
+  app.get("/api/notifications", getUserNotificationsHandler)
+  app.post("/api/notifications/:id/read", markAsReadHandler)
 
   app.post('/api/wallet/fund', fundWalletHandler);
   app.post('/api/wallet/fund-callback', paystackCallbackHandler);

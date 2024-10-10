@@ -44,12 +44,12 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<IEs
     const bet = await Bet.findById(betId);
 
     if (!bet) {
-        throw new Error(StringConstants.BET_NOT_FOUND)
+        throw new NotFoundError(StringConstants.BET_NOT_FOUND)
     }
 
     if (bet.betType === 'with-witness') {
         if (bet.status !== 'verified' && bet.status !== 'disputed') {
-            throw new Error(StringConstants.INVALID_BET_STATE);
+            throw new InvalidStateError(StringConstants.INVALID_BET_STATE);
         }
     }
 
@@ -66,7 +66,7 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<IEs
     } else if (escrow.opponentId.toString() === winnerId.toString()) {
         await payoutFunds(escrow.opponentId, winnerShare, betId);
     } else {
-        throw new Error('Winner ID does not match any participant');
+        throw new Error(StringConstants.INVALID_WINNER);
     }
 
     escrow.status = 'released';
@@ -83,7 +83,7 @@ export async function refundFunds(betId: string) {
         const escrow = await Escrow.findOne({ betId });
         console.log(escrow)
         if (!escrow) {
-            throw new Error(StringConstants.ESCROW_NOT_FOUND);
+            throw new NotFoundError(StringConstants.ESCROW_NOT_FOUND);
         }
 
         await refund(escrow.creatorId, escrow.creatorStake, betId);

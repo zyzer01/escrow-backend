@@ -1,98 +1,122 @@
-import { Request, Response } from 'express';
-import { registerUser, loginUser, resendEmailVerificationCode, forgotPassword, resetPassword, verifyEmail } from './auth.service';
+import { NextFunction, Request, Response } from 'express';
+import { loginUser, resendEmailVerificationCode, forgotPassword, resetPassword, verifyEmail, requestEmailVerification, completeRegistration } from './auth.service';
 import { IUser } from '../users/user.model';
 import { StringConstants } from '../../common/strings';
-import { validateLoginInput } from '../../utils/validators';
+import { validateLoginInput } from '../../lib/utils/validators';
 
-export async function registerUserHandler(req: Request, res: Response) {
+export async function requestEmailVerificationHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const userData: IUser = req.body;
-    const newUser = await registerUser(userData);
-    res.status(201).json(newUser);
-  } catch (error: any) {
-    console.error(error);
-    if (error.message === 'email or username already exists') {
-      res.status(400).json({ message: StringConstants.EMAIL_USERNAME_ALREADY_EXISTS });
-    } else {
-      res.status(500).json({ message: StringConstants.REGISTRATION_ERROR });
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
     }
+
+    await requestEmailVerification(email);
+    res.status(201).json(StringConstants.EMAIL_VERIFICATION_SENT);
+  } catch (error) {
+    console.error(error);
+    next(error);
   }
 }
 
-export async function loginUserHandler(req: Request, res: Response) {
+export async function completeRegistrationHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userData: IUser = req.body
+    await completeRegistration(userData);
+    res.status(201).json(StringConstants.SIGNUP_SUCCESSFUL);
+  } catch (error) {
+    console.error(error);
+    next(error)
+  }
+}
+
+
+
+export async function loginUserHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body;
 
     const validationErrors = validateLoginInput(email, password);
     if (validationErrors) {
-      return res.status(400).json({ message: validationErrors });
+      console.log('Validation errors:', validationErrors);
+      return res.status(400).json({ error: validationErrors });
     }
 
     const { token, user } = await loginUser(email, password);
 
-    if (!user.email) {
-      return res.status(401).json({ message: StringConstants.INVALID_CREDENTIALS });
-    }
-
     if (!user.isEmailVerified) {
-      return res.status(403).json({ message: StringConstants.EMAIL_NOT_VERIFIED });
+      console.log('Email not verified:', user.email);
+      return res.status(403).json({ error: StringConstants.EMAIL_NOT_VERIFIED });
     }
 
-    res.status(200).json({ token, user });
-  } catch (error: any) {
-    console.error(error);
+    const response = {
+      token,
+      user: {
+        id: user.id.toString(),
+        email: user.email,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified
+      }
+    };
 
-    switch (error.message) {
-      case StringConstants.USER_NOT_FOUND:
-        return res.status(400).json({ message: StringConstants.USER_NOT_FOUND });
-      case StringConstants.INVALID_PASSWORD:
-        return res.status(401).json({ message: StringConstants.INVALID_PASSWORD });
-      default:
-        return res.status(500).json({ message: 'Internal Server Error' });
-    }
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 3600000,
+      path: '/',
+    });
+
+    console.log('Login successful:', response);
+    return res.status(200).json(response);
+
+  } catch (error) {
+    console.error('Error during login:', error);
+    next(error);
   }
 }
 
-export async function verifyEmailHandler(req: Request, res: Response) {
+
+export async function verifyEmailHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { code } = req.body
     await verifyEmail(code)
-    res.status(200).json('Email Verified Successfully')
+    res.status(200).json(StringConstants.EMAIL_VERIFY_SUCCESS)
   } catch (error) {
     console.error(error)
-    res.status(500).json({ message: 'Internal server error' })
+    next(error)
   }
 }
 
 
-export async function resendEmailVerificationCodeHandler(req: Request, res: Response) {
+export async function resendEmailVerificationCodeHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { email } = req.body
     await resendEmailVerificationCode(email)
-    res.status(200).json('Email Verification Code Sent')
+    res.status(200).json(StringConstants.EMAIL_VERIFICATION_SENT)
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error' })
+    next(error)
   }
 }
 
-export async function forgotPasswordHandler(req: Request, res: Response) {
+export async function forgotPasswordHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { email } = req.body
     await forgotPassword(email)
-    res.status(200).json('Reset Token Sent')
+    res.status(200).json(StringConstants.PASSWORD_RESET_LINK_SENT)
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error' })
+    next(error)
   }
 }
 
-export async function resetPasswordHandler(req: Request, res: Response) {
+export async function resetPasswordHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { resetToken, newPassword } = req.body
-    await resetPassword(resetToken, newPassword)
-    res.status(200).json('Password Reset Successfully')
+    const { token, newPassword } = req.body;
+    await resetPassword(token, newPassword);
+    res.status(200).json(StringConstants.PASSWORD_RESET_SUCCESSFUL);
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: 'Internal server error' })
+    console.error(error);
+    next(error)
   }
 }
-

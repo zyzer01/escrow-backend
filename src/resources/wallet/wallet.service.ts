@@ -3,7 +3,7 @@ import WalletTransaction from './models/wallet-transaction.model';
 import User from '../users/user.model';
 import axios from 'axios'
 import { StringConstants } from '../../common/strings';
-import { generateUniqueReference } from '../../utils';
+import { generateUniqueReference } from '../../lib/utils/auth';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
 
 const reference = generateUniqueReference()
@@ -54,7 +54,7 @@ export async function refund(userId: string, amount: number, betId: string): Pro
   await userWallet.save();
 }
 
-export async function addToUserWallet(userId: string, amount: number, betId: string): Promise<void> {
+export async function addToUserWallet(userId: string, amount: number, betId?: string): Promise<void> {
   let userWallet = await Wallet.findOne({ userId });
 
   if (!userWallet) {
@@ -102,7 +102,6 @@ export async function fundWallet(userId: string, amount: number, callbackUrl: st
   }
 }
 
-
 export async function paystackCallback(reference: string): Promise<void> {
   try {
     // Verify transaction with Paystack
@@ -120,16 +119,20 @@ export async function paystackCallback(reference: string): Promise<void> {
       const user = await User.findOne({ email });
       const wallet = await Wallet.findOne({ userId: user._id })
 
-      if (!user || !wallet) {
-        throw new Error('User not found');
+      if(!wallet) {
+        throw new NotFoundError(StringConstants.WALLET_NOT_FOUND)
+      }
+
+      if (!user) {
+        throw new NotFoundError(StringConstants.USER_NOT_FOUND);
       }
 
       const existingTransaction = await WalletTransaction.findOne({ reference });
       if (existingTransaction) {
-        throw new Error('Transaction has already been processed.');
+        throw new AlreadyDoneError('Transaction has already been processed.');
       }
 
-      wallet.balance += amount / 100; // Convert kobo to Naira
+      wallet.balance += amount / 100; // Converts kobo to Naira
       await user.save();
       await wallet.save();
 
@@ -141,7 +144,7 @@ export async function paystackCallback(reference: string): Promise<void> {
       });
       await walletTransaction.save();
     } else {
-      throw new Error('Transaction failed or incomplete');
+      throw new TransactionError(StringConstants.FAILED_TRANSACTION);
     }
   } catch (error) {
     console.error('Error verifying transaction:', error);
@@ -167,7 +170,6 @@ export async function verifyAccountNumber(accountNumber: string, bankCode: strin
     throw new Error('Account verification failed');
   }
 }
-
 
 export async function withdrawFromWallet(walletId: string, amount: number, bankCode: string, accountNumber: string): Promise<void> {
   try {
@@ -209,14 +211,13 @@ export async function withdrawFromWallet(walletId: string, amount: number, bankC
       });
       await walletTransaction.save();
     } else {
-      throw new Error('Withdrawal failed');
+      throw new TransactionError(StringConstants.FAILED_WITHDRAWAL);
     }
   } catch (error) {
     console.error('Error during withdrawal:', error);
     throw new Error('Error during withdrawal');
   }
 }
-
 
 async function createTransferRecipient(user: any, bankCode: string, accountNumber: string): Promise<any> {
   try {
@@ -237,4 +238,26 @@ async function createTransferRecipient(user: any, bankCode: string, accountNumbe
     console.error('Error creating transfer recipient:', error);
     throw new Error('Error creating transfer recipient');
   }
+}
+
+
+export async function updateWalletBalance(userId: string, amount: number, betId?: string): Promise<void> {
+  const wallet = await Wallet.findOne({ userId });
+
+  if (!wallet) {
+      throw new NotFoundError(StringConstants.WALLET_NOT_FOUND);
+  }
+
+  wallet.balance += amount;
+  await wallet.save();
+
+  const transaction = new WalletTransaction({
+    userId,
+    amount,
+    type: 'fund',
+    description: `Wallet Funded`,
+    betId: betId,
+    reference: reference
+  });
+  await transaction.save();
 }
