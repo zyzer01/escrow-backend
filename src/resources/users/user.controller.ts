@@ -70,15 +70,17 @@ export async function deleteUserHandler(req: Request, res: Response): Promise<Re
 }
 
 export async function isUsernameTakenHandler(req: Request, res: Response) {
-  const {username} = req.body
+  const { username } = req.body;
+
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ error: 'Invalid username provided' });
+  }
+
   try {
-    const usernameTaken = await isUsernameTaken(username)
-    if (!usernameTaken) {
-      return res.status(200).json({ error: 'Username is yours' });
-    }
-    res.status(400).json({error: 'Username is taken'})
+    const isTaken = await isUsernameTaken(username);
+    return res.status(200).json({ available: !isTaken });
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: StringConstants.FAILED_USERNAME_SEARCH })
+    console.error('Error checking username availability:', error);
+    return res.status(500).json({ error: StringConstants.FAILED_USERNAME_SEARCH });
   }
 }

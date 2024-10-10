@@ -7,23 +7,27 @@ import User from '../users/user.model';
 import { StringConstants } from '../../common/strings';
 import { createNotification } from '../notifications/notification.service';
 import { selectNeutralWitness } from '../../lib/utils/neutralWitness';
+import { NotFoundException } from '../../common/errors/NotFoundException';
+import { BadRequestException } from '../../common/errors/BadRequestException';
+import { ConflictException } from '../../common/errors/ConflictException';
+import { UnprocessableEntityException } from '../../common/errors/UnprocessableEntityException';
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     if (!betData.creatorId || !betData.opponentId) {
-        throw new MissingIdError(StringConstants.CREATOR_OPPONENT_ID_MISSING);
+        throw new NotFoundException(StringConstants.CREATOR_OPPONENT_ID_MISSING);
     }
     // Allow bets without witnesses
     if (designatedWitnesses.length > 0 && (designatedWitnesses.length < 2 || designatedWitnesses.length > 3)) {
-        throw new InsufficientError(StringConstants.INSUFFICIENT_WITNESS_DESIGNATION);
+        throw new BadRequestException(StringConstants.INSUFFICIENT_WITNESS_DESIGNATION);
     }
     if (designatedWitnesses.length > 0 && (designatedWitnesses.includes(betData.creatorId) || designatedWitnesses.includes(betData.opponentId))) {
-        throw new InvalidAssignmentError(StringConstants.INVALID_WITNESS_ASSIGNMENT);
+        throw new BadRequestException(StringConstants.INVALID_WITNESS_ASSIGNMENT);
     }
 
     if (designatedWitnesses.length > 0) {
         const validWitnessIds = await User.find({ _id: { $in: designatedWitnesses } }).distinct('_id');
         if (validWitnessIds.length !== designatedWitnesses.length) {
-            throw new NotFoundError(StringConstants.WITNESS_DOES_NOT_EXIST);
+            throw new NotFoundException(StringConstants.WITNESS_DOES_NOT_EXIST);
         }
     }
 
@@ -73,10 +77,10 @@ export async function updateBet(betId: string, betData: Partial<IBet>): Promise<
     const bet = await Bet.findById(betId)
     console.log(bet)
     if (!bet) {
-        throw new NotFoundError(StringConstants.BET_NOT_FOUND)
+        throw new NotFoundException(StringConstants.BET_NOT_FOUND)
     }
     if (bet.status !== 'pending') {
-        throw new AlreadyDoneError(StringConstants.BET_ALREADY_ACCEPTED_ENGAGED)
+        throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_ENGAGED)
     }
     return Bet.findByIdAndUpdate(betId, betData)
 }
@@ -91,10 +95,10 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
     const invitation = await BetInvitation.findById(invitationId).populate('betId');
 
     if(!invitation) {
-        throw new NotFoundError(StringConstants.BET_INVITATION_NOT_FOUND)
+        throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
     }
     if (!invitation || invitation.status !== 'pending') {
-        throw new AlreadyDoneError(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
+        throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
     const bet = invitation.betId;
@@ -129,10 +133,10 @@ export async function rejectBetInvitation(invitationId: string): Promise<IBet | 
     const invitation = await BetInvitation.findById(invitationId)
 
     if (!invitation) {
-        throw new NotFoundError(StringConstants.BET_INVITATION_NOT_FOUND)
+        throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
     }
     if (invitation.status !== 'pending') {
-        throw new AlreadyDoneError(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
+        throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
     invitation.status = 'rejected';
@@ -151,13 +155,13 @@ export async function engageBet(betId: string): Promise<IBet | null> {
     const bet = await Bet.findById(betId);
 
     if (bet.status !== 'accepted') {
-        throw new InvalidStateError(StringConstants.INVALID_BET_STATE)
+        throw new UnprocessableEntityException(StringConstants.INVALID_BET_STATE)
     }
     if (bet.betType === 'with-witnesses') {
         const pendingWitnesses = await Witness.find({ betId: bet._id, status: { $ne: 'accepted' } });
 
         if (pendingWitnesses.length > 0) {
-            throw new PendingError(StringConstants.PENDING_WITNESS);
+            throw new BadRequestException(StringConstants.PENDING_WITNESS);
         }
     }
 
@@ -184,16 +188,16 @@ export async function settleBet(betId: string, winnerId: string): Promise<IBet |
     const bet = await Bet.findById(betId);
 
     if (!bet) {
-        throw new NotFoundError(StringConstants.BET_NOT_FOUND);
+        throw new NotFoundException(StringConstants.BET_NOT_FOUND);
     }
     if (bet.betType === 'with-witnesses' && bet.status !== 'verified') {
-        throw new InvalidStateError(StringConstants.INVALID_BET_STATE);
+        throw new UnprocessableEntityException(StringConstants.INVALID_BET_STATE);
     }
     if (bet.betType === 'without-witnesses' && bet.status !== 'active') {
-        throw new InvalidStateError(StringConstants.INVALID_BET_STATE);
+        throw new UnprocessableEntityException(StringConstants.INVALID_BET_STATE);
     }
     if (!winnerId) {
-        throw new NotImplementedError(StringConstants.BET_WINNER_NOT_DETERMINED);
+        throw new UnprocessableEntityException(StringConstants.BET_WINNER_NOT_DETERMINED);
     }
 
     await releaseFunds(bet._id, winnerId);
@@ -241,7 +245,7 @@ export async function cancelBet(betId: string): Promise<IBet | null> {
     const bet = await Bet.findById(betId);
     
     if (!bet || bet.status !== 'accepted') {
-        throw new InvalidStateError(StringConstants.INVALID_BET_STATE)
+        throw new UnprocessableEntityException(StringConstants.INVALID_BET_STATE)
     }
 
     await refundFunds(betId);
@@ -263,12 +267,12 @@ export async function cancelBet(betId: string): Promise<IBet | null> {
 export async function reverseBetOutcome(betId: string): Promise<void> {
     const bet = await Bet.findById(betId);
     if (!bet) {
-        throw new Error('Bet not found.');
+        throw new NotFoundException('Bet not found.');
     }
 
     const originalWinnerId = bet.winnerId;
     if (!originalWinnerId) {
-        throw new Error('Bet does not have a winner to reverse.');
+        throw new NotFoundException('Bet does not have a winner to reverse.');
     }
 
     const newWinnerId = (bet.creatorId.toString() === originalWinnerId.toString())
@@ -276,7 +280,7 @@ export async function reverseBetOutcome(betId: string): Promise<void> {
         : bet.creatorId;
 
     if (!newWinnerId) {
-        throw new Error('No opponent available to reverse outcome.');
+        throw new NotFoundException('No opponent available to reverse outcome.');
     }
 
     await releaseFunds(betId, newWinnerId);

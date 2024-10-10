@@ -1,8 +1,8 @@
 import { saltRounds, verificationCodeExpiry } from "../../config";
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 dotenv.config()
 
@@ -14,11 +14,15 @@ export const generateOTP = (): number => {
 
 export const hashPassword = (password: string) => bcrypt.hash(password, saltRounds)
 
+export const comparePasswords = async (inputPassword: string, hashedPassword: string): Promise<boolean> => {
+    return bcrypt.compare(inputPassword, hashedPassword);
+};
+
 export const generateVerificationCode = (): string => crypto.randomBytes(3).toString('hex')
 
 export const calculateVerificationCodeExpiryTime = () => {
     return new Date(Date.now() + verificationCodeExpiry);
-  };
+};
 
 export function verifyToken(token: string): any {
     try {
@@ -31,7 +35,7 @@ export function verifyToken(token: string): any {
 export function generateUniqueReference(maxLength: number = 12): string {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let reference = '';
-    
+
     for (let i = 0; i < maxLength; i++) {
         const randomIndex = Math.floor(Math.random() * characters.length);
         reference += characters[randomIndex];
