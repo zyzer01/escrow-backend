@@ -81,8 +81,6 @@ export async function rejectBetInvitationHandler(req: Request, res: Response, ne
     }
 }
 
-
-
 export async function engageBetHandler(req: Request, res: Response, next: NextFunction) {
     const { betId } = req.params;
     try {

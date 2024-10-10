@@ -139,14 +139,15 @@ export async function loginUser(email: string, password: string): Promise<{ toke
 
 export async function forgotPassword(email: string): Promise<void> {
   const user = await User.findOne({ email })
+  
+  if (!user) {
+    throw new NotFoundException(StringConstants.USER_NOT_FOUND)
+  }
 
   if(!user.password) {
     throw new ForbiddenException(StringConstants.MISSING_PASSWORD)
   }
 
-  if (!user) {
-    throw new NotFoundException(StringConstants.USER_NOT_FOUND)
-  }
 
   const resetToken = generateVerificationCode();
   const resetTokenExpiry = calculateVerificationCodeExpiryTime()
@@ -178,10 +179,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
   const user = await User.findOne({ resetPasswordToken: token, resetPasswordTokenExpiry: { $gt: new Date() } })
 
-  if(!user.password) {
-    throw new ForbiddenException(StringConstants.MISSING_PASSWORD)
-  }
-
+  
   if (!user) {
     const expiredUser = await User.findOne({ resetPasswordToken: token });
     if (expiredUser) {
@@ -191,6 +189,9 @@ export async function resetPassword(token: string, newPassword: string): Promise
       console.log('No user found with this token');
       throw new ForbiddenException(StringConstants.INVALID_TOKEN)
     }
+  }
+  if(!user.password) {
+    throw new ForbiddenException(StringConstants.MISSING_PASSWORD)
   }
 
   if (await comparePasswords(newPassword, user.password)) {
@@ -302,6 +303,3 @@ export async function resendEmailVerificationCode(email: string): Promise<void> 
     params: { username: user.firstName, code: newVerificationCode },
   });
 }
-
-
-

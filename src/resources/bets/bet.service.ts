@@ -66,7 +66,6 @@ export async function createBet(betData: IBet, designatedWitnesses: Types.Object
     return bet;
 }
 
-
 /**
  * Updates a bet.
  * @param betId - The ID of the bet to update.
@@ -94,7 +93,7 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
 
     const invitation = await BetInvitation.findById(invitationId).populate('betId');
 
-    if(!invitation) {
+    if (!invitation) {
         throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
     }
     if (!invitation || invitation.status !== 'pending') {
@@ -167,12 +166,12 @@ export async function engageBet(betId: string): Promise<IBet | null> {
 
     bet.status = 'active';
     await bet.save();
-    
+
     await createNotification(
-      [bet.creatorId, bet.opponentId],
-      "bet-engaged",
-      "Bet activated",
-      `Your bet ${bet.title} has been activated`
+        [bet.creatorId, bet.opponentId],
+        "bet-engaged",
+        "Bet activated",
+        `Your bet ${bet.title} has been activated`
     );
 
     return bet
@@ -243,7 +242,7 @@ export async function settleBet(betId: string, winnerId: string): Promise<IBet |
 export async function cancelBet(betId: string): Promise<IBet | null> {
 
     const bet = await Bet.findById(betId);
-    
+
     if (!bet || bet.status !== 'accepted') {
         throw new UnprocessableEntityException(StringConstants.INVALID_BET_STATE)
     }

@@ -13,6 +13,8 @@ export interface IUser extends Document {
   bets_participated: number;
   bets_witnessed: number;
   is_active: boolean;
+  googleId?: string;
+  profilePicture?: string;
   isEmailVerified: boolean;
   emailVerificationCode: number | null;
   emailVerificationCodeExpiry: Date | null;
@@ -31,18 +33,20 @@ const UserSchema = new Schema<IUser>({
   firstName: { type: String },
   lastName: { type: String },
   phone_number: { type: String },
-  role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' }, 
+  role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' },
   reputation_score: { type: Number, default: 0 },
   bets_participated: { type: Number, default: 0, min: [0, 'Value cannot be less than 0'] },
   bets_witnessed: { type: Number, default: 0, min: [0, 'Value cannot be less than 0'] },
   is_active: { type: Boolean, default: true },
-  isEmailVerified: {type: Boolean, default: false},
-  emailVerificationCode: {type: Number},
-  emailVerificationCodeExpiry: {type: Date},
-  resetPasswordToken: {type: String},
-  resetPasswordTokenExpiry: {type: Date},
-  changeEmailToken: {type: String},
-  changeEmailTokenExpiry: {type: Date},
+  googleId: { type: String },
+  profilePicture: { type: String },
+  isEmailVerified: { type: Boolean, default: false },
+  emailVerificationCode: { type: Number },
+  emailVerificationCodeExpiry: { type: Date },
+  resetPasswordToken: { type: String },
+  resetPasswordTokenExpiry: { type: Date },
+  changeEmailToken: { type: String },
+  changeEmailTokenExpiry: { type: Date },
   isEligibleForNeutralWitness: { type: Boolean, default: false },
   registrationComplete: { type: Boolean, default: false },
 }, { timestamps: true });

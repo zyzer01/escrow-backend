@@ -3,6 +3,7 @@ import axios from 'axios';
 import { BankAccount, IBankAccount } from './bank-account.model';
 import User from '../users/user.model';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
+import { NotFoundException } from '../../common/errors';
 
 export async function verifyAccountNumber(accountNumber: string, bankCode: string): Promise<any> {
   try {
@@ -19,7 +20,7 @@ export async function verifyAccountNumber(accountNumber: string, bankCode: strin
     return response.data.data;
   } catch (error) {
     console.error('Error verifying account number:', error);
-    throw new Error('Account verification failed');
+    throw new Error(StringConstants.BANK_ACCOUNT_VERIFICATION_FAILED);
   }
 }
 
@@ -43,7 +44,7 @@ export async function saveBankAccount(userId: string, bankCode: string, accountN
 
   const user = await User.findById(userId);
   if (!user) {
-    throw new Error('User not found');
+    throw new NotFoundException(StringConstants.USER_NOT_FOUND);
   }
 
   const bankAccount = new BankAccount({
@@ -72,7 +73,7 @@ export async function setPrimaryBankAccount(userId: string, bankAccountId: strin
   const bankAccount = await BankAccount.findByIdAndUpdate(bankAccountId, { $set: { isPrimary: true } }, { new: true });
 
   if (!bankAccount) {
-    throw new Error(StringConstants.BANK_ACCOUNT_NOT_FOUND);
+    throw new NotFoundException(StringConstants.BANK_ACCOUNT_NOT_FOUND);
   }
 
   return bankAccount;
@@ -83,8 +84,8 @@ export async function deleteBankAccount(userId: string, bankAccountId: string): 
     const bankAccount = await BankAccount.findOneAndDelete({ _id: bankAccountId, userId });
 
     if (!bankAccount) {
-        throw new Error('Bank account not found or unauthorized');
+        throw new NotFoundException(StringConstants.BANK_ACCOUNT_NOT_FOUND);
     }
 
-    console.log('Bank account deleted successfully');
+    return;
 }

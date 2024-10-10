@@ -1,44 +1,19 @@
-import { Express, Request, Response } from "express";
+import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, updateUserHandler } from "./resources/users/user.controller";
-import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler } from "./resources/auth/auth.controller";
+import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler, logoutHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
 import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
 import { getTotalStakesHandler } from "./resources/escrow/escrow.controller";
-import rateLimit from 'express-rate-limit';
 import { getAllDisputesHandler, logDisputeHandler, resolveDisputeHandler } from "./resources/bet-disputes/bet-dispute.controller";
 import { fundWalletHandler, paystackCallbackHandler, verifyAccountNumberHandler, withdrawFromWalletHandler } from "./resources/wallet/wallet.controller";
 import { upload } from "./lib/middleware/multer";
 import { deleteFile, uploadFile } from "./file-upload/file-upload.controller";
 import { deleteBankAccountHandler, fetchAvailableBanksHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
 import { getUserNotificationsHandler, markAsReadHandler } from "./resources/notifications/notification.controller";
+import { authLimiter, mailLimiter } from "./common/rate-limit";
+import { googleCallbackHandler, googleHandler } from "./resources/auth/google/google.controller";
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
-  handler: (req: Request, res: Response) => {
-    const retryAfter = req.rateLimit?.resetTime
-      ? Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000)
-      : null;
-
-    let message: string;
-
-    if (retryAfter) {
-      const minutes = Math.floor(retryAfter / 60);
-      const seconds = retryAfter % 60;
-      message = `Too many attempts. Please try again after ${minutes} minutes and ${seconds} seconds.`;
-    } else {
-      message = "Too many attempts. Please try again later.";
-    }
-
-    res.status(429).json({ 
-      message, 
-      statusCode: 429,
-      path: req.originalUrl,
-      timestamp: new Date().toISOString(),
-    });
-  },
-});
 
 
 function routes(app: Express) {
@@ -49,13 +24,16 @@ function routes(app: Express) {
   app.delete('/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
   app.post('/users/username', isUsernameTakenHandler)
 
-  app.post('/auth/request-email-verification', authLimiter, requestEmailVerificationHandler)
+  app.post('/auth/request-email-verification', mailLimiter, requestEmailVerificationHandler)
   app.post('/auth/complete-profile', completeRegistrationHandler)
   app.post('/auth/login', authLimiter, loginUserHandler)
   app.post('/auth/verify-email', verifyEmailHandler)
   app.post('/auth/resend-email-verificationCode', resendEmailVerificationCodeHandler)
-  app.post('/auth/forgot-password', forgotPasswordHandler)
+  app.post('/auth/forgot-password', mailLimiter, forgotPasswordHandler)
   app.post('/auth/reset-password', resetPasswordHandler)
+  app.post('/auth/logout', logoutHandler)
+  app.get('/auth/google', googleHandler)
+  app.get('/auth/google/callback', googleCallbackHandler)
 
   app.post('/api/bets', createBetHandler)
   app.get('/api/bets', getBetsHandler)

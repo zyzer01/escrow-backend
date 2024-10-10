@@ -6,6 +6,11 @@ import jwt from 'jsonwebtoken';
 
 dotenv.config()
 
+interface Payload {
+    userId: string; // Adjust this to fit your payload structure
+    role?: string;
+  }
+
 const JWT_SECRET = process.env.JWT_SECRET as string
 
 export const generateOTP = (): number => {
@@ -31,6 +36,12 @@ export function verifyToken(token: string): any {
         throw new Error('Invalid token');
     }
 }
+
+export function generateToken(payload: Payload): string {
+  
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+    return token;
+  }
 
 export function generateUniqueReference(maxLength: number = 12): string {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

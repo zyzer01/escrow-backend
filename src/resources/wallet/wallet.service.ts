@@ -5,6 +5,7 @@ import axios from 'axios'
 import { StringConstants } from '../../common/strings';
 import { generateUniqueReference } from '../../lib/utils/auth';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
+import { ConflictException, NotFoundException } from '../../common/errors';
 
 const reference = generateUniqueReference()
 
@@ -120,16 +121,16 @@ export async function paystackCallback(reference: string): Promise<void> {
       const wallet = await Wallet.findOne({ userId: user._id })
 
       if(!wallet) {
-        throw new NotFoundError(StringConstants.WALLET_NOT_FOUND)
+        throw new NotFoundException(StringConstants.WALLET_NOT_FOUND)
       }
 
       if (!user) {
-        throw new NotFoundError(StringConstants.USER_NOT_FOUND);
+        throw new NotFoundException(StringConstants.USER_NOT_FOUND);
       }
 
       const existingTransaction = await WalletTransaction.findOne({ reference });
       if (existingTransaction) {
-        throw new AlreadyDoneError('Transaction has already been processed.');
+        throw new ConflictException(StringConstants.TRANSACTION_PROCESSED);
       }
 
       wallet.balance += amount / 100; // Converts kobo to Naira
@@ -144,7 +145,7 @@ export async function paystackCallback(reference: string): Promise<void> {
       });
       await walletTransaction.save();
     } else {
-      throw new TransactionError(StringConstants.FAILED_TRANSACTION);
+      throw new Error(StringConstants.FAILED_TRANSACTION);
     }
   } catch (error) {
     console.error('Error verifying transaction:', error);
@@ -211,7 +212,7 @@ export async function withdrawFromWallet(walletId: string, amount: number, bankC
       });
       await walletTransaction.save();
     } else {
-      throw new TransactionError(StringConstants.FAILED_WITHDRAWAL);
+      throw new Error(StringConstants.FAILED_WITHDRAWAL);
     }
   } catch (error) {
     console.error('Error during withdrawal:', error);
@@ -245,7 +246,7 @@ export async function updateWalletBalance(userId: string, amount: number, betId?
   const wallet = await Wallet.findOne({ userId });
 
   if (!wallet) {
-      throw new NotFoundError(StringConstants.WALLET_NOT_FOUND);
+      throw new NotFoundException(StringConstants.WALLET_NOT_FOUND);
   }
 
   wallet.balance += amount;

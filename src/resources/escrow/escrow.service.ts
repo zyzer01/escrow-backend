@@ -1,3 +1,4 @@
+import { NotFoundException, UnprocessableEntityException } from '../../common/errors';
 import { StringConstants } from '../../common/strings';
 import { systemCommissionPercentage, witnessCommissionPercentage } from '../../config';
 import Bet from '../bets/models/bet.model';
@@ -15,9 +16,8 @@ import Escrow, { IEscrow } from './escrow.model';
 export async function getTotalStakes(betId: string): Promise<number> {
     const escrow = await Escrow.findOne({ betId });
 
-    console.log(escrow);
     if (!escrow) {
-        throw new Error(StringConstants.ESCROW_NOT_FOUND)
+        throw new NotFoundException(StringConstants.ESCROW_NOT_FOUND)
     }
 
     const totalStakes = escrow.creatorStake + escrow.opponentStake;
@@ -44,12 +44,12 @@ export async function releaseFunds(betId: string, winnerId: string): Promise<IEs
     const bet = await Bet.findById(betId);
 
     if (!bet) {
-        throw new NotFoundError(StringConstants.BET_NOT_FOUND)
+        throw new NotFoundException(StringConstants.BET_NOT_FOUND)
     }
 
     if (bet.betType === 'with-witness') {
         if (bet.status !== 'verified' && bet.status !== 'disputed') {
-            throw new InvalidStateError(StringConstants.INVALID_BET_STATE);
+            throw new UnprocessableEntityException(StringConstants.INVALID_BET_STATE);
         }
     }
 
@@ -83,7 +83,7 @@ export async function refundFunds(betId: string) {
         const escrow = await Escrow.findOne({ betId });
         console.log(escrow)
         if (!escrow) {
-            throw new NotFoundError(StringConstants.ESCROW_NOT_FOUND);
+            throw new NotFoundException(StringConstants.ESCROW_NOT_FOUND);
         }
 
         await refund(escrow.creatorId, escrow.creatorStake, betId);
@@ -93,7 +93,7 @@ export async function refundFunds(betId: string) {
         await escrow.save();
     } catch (error) {
         console.error(error);
-        throw new Error("Failed to refund stakes");
+        throw new Error(StringConstants.FAILED_STAKES_REFUND);
     }
 
     return 'Refunded'

@@ -1,27 +1,18 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { getUserNotifications, markAsRead } from "./notification.service";
-import { StringConstants } from "../../common/strings";
 
-export async function markAsReadHandler(req: Request, res: Response): Promise<Response> {
+export async function markAsReadHandler(req: Request, res: Response, next: NextFunction) {
   const { id } = req.params
 
   try {
     const recusal = await markAsRead(id);
     return res.status(200).json(recusal);
-  } catch (error: any) {
-    if (error instanceof NotFoundError) {
-      return res.status(404).json({ error: StringConstants.NOTIFICATION_NOT_FOUND });
-    }
-
-    if (error instanceof AlreadyDoneError) {
-      return res.status(409).json({ error: StringConstants.NOTIFICATION_ALREADY_READ });
-    }
-
-    return res.status(500).json({ error: StringConstants.FAILED_TO_MARK_AS_READ });
+  } catch (error) {
+    next(error)
   }
 }
 
-export async function getUserNotificationsHandler(req: Request, res: Response) {
+export async function getUserNotificationsHandler(req: Request, res: Response, next: NextFunction) {
   const { userId, isRead } = req.body
   const limit = parseInt(req.query.limit as string, 10)
 
@@ -31,11 +22,7 @@ export async function getUserNotificationsHandler(req: Request, res: Response) {
       return res.status(200).json(notifications.slice(0, limit))
     }
     res.status(200).json(notifications)
-  } catch (error: any) {
-    if (error instanceof NotFoundError) {
-      return res.status(404).json({ error: StringConstants.NOTIFICATION_NOT_FOUND });
-    }
-
-    return res.status(500).json({ error: StringConstants.FAILED_TO_FETCH_NOTIFICATIONS });
+  } catch (error) {
+    next(error)
   }
 }

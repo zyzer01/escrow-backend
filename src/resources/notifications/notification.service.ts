@@ -1,3 +1,4 @@
+import { ConflictException, NotFoundException } from '../../common/errors';
 import { StringConstants } from '../../common/strings';
 import Notification, { INotification } from './notification.model';
 
@@ -13,10 +14,10 @@ export async function createNotification(userIds: string[], type: string, title:
 export async function markAsRead(notificationId: string): Promise<INotification | null> {
   const notification = await Notification.findById(notificationId);
   if (!notification) {
-    throw new NotFoundError(StringConstants.NOTIFICATION_NOT_FOUND);
+    throw new NotFoundException(StringConstants.NOTIFICATION_NOT_FOUND);
   }
-  if(notification.isRead == true) {
-    throw new AlreadyDoneError(StringConstants.NOTIFICATION_ALREADY_READ)
+  if (notification.isRead == true) {
+    throw new ConflictException(StringConstants.NOTIFICATION_ALREADY_READ)
   }
   notification.isRead = true;
   return await notification.save();
