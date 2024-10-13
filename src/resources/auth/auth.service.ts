@@ -7,6 +7,8 @@ import { calculateVerificationCodeExpiryTime, comparePasswords, generateOTP, gen
 import { StringConstants } from '../../common/strings';
 import Wallet from '../wallet/models/wallet.model';
 import { ConflictException, ForbiddenException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '../../common/errors';
+import { validateLoginInput } from '../../lib/utils/validators';
+import { addContactToBrevo } from '../marketing/marketing.service';
 
 
 dotenv.config()
@@ -17,15 +19,18 @@ const JWT_SECRET = process.env.JWT_SECRET as string;
   Initiate Registration
 */
 
-export async function requestEmailVerification(email: string) {
+export async function requestEmailVerification(email: string, password: string) {
   let user = await User.findOne({ email });
 
   const code = generateOTP();
   const codeExpiry = calculateVerificationCodeExpiryTime();
+  const hashedPassword = await hashPassword(password)
 
   if (user) {
     if (user.isEmailVerified && user.registrationComplete) {
       throw new ConflictException(StringConstants.EMAIL_ALREADY_IN_USE);
+    } else if (user.googleId) {
+      throw new ForbiddenException(StringConstants.GOOGLE_SIGNED)
     } else {
       user.emailVerificationCode = code;
       user.emailVerificationCodeExpiry = codeExpiry;
@@ -33,6 +38,7 @@ export async function requestEmailVerification(email: string) {
   } else {
     user = new User({
       email,
+      password: hashedPassword,
       emailVerificationCode: code,
       emailVerificationCodeExpiry: codeExpiry,
       isEmailVerified: false,
@@ -86,10 +92,7 @@ export async function completeRegistration(userData: IUser): Promise<IUser> {
     throw new UnprocessableEntityException(StringConstants.EMAIL_NOT_VERIFIED);
   }
 
-  const hashedPassword = await hashPassword(userData.password);
-
   user.username = userData.username;
-  user.password = hashedPassword;
   user.firstName = userData.firstName;
   user.lastName = userData.lastName;
   user.phone_number = userData.phone_number;
@@ -111,6 +114,8 @@ export async function completeRegistration(userData: IUser): Promise<IUser> {
     params: { username: savedUser.firstName },
   });
 
+  addContactToBrevo(user.email, user.firstName, user.lastName)
+
   return savedUser;
 }
 
@@ -122,6 +127,16 @@ export async function loginUser(email: string, password: string): Promise<{ toke
   if (!user) {
     throw new NotFoundException(StringConstants.USER_NOT_FOUND);
   }
+
+  if (!user.isEmailVerified) {
+    throw new ForbiddenException(StringConstants.EMAIL_NOT_VERIFIED)
+  }
+
+  const validationErrors = validateLoginInput(email, password);
+  
+    if (validationErrors) {
+      throw new ForbiddenException('Invalid Email or password')
+    }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
@@ -139,12 +154,16 @@ export async function loginUser(email: string, password: string): Promise<{ toke
 
 export async function forgotPassword(email: string): Promise<void> {
   const user = await User.findOne({ email })
-  
+
   if (!user) {
     throw new NotFoundException(StringConstants.USER_NOT_FOUND)
   }
 
-  if(!user.password) {
+  if (user.googleId) {
+    throw new ForbiddenException(StringConstants.GOOGLE_SIGNED)
+  }
+
+  if (!user.password) {
     throw new ForbiddenException(StringConstants.MISSING_PASSWORD)
   }
 
@@ -179,7 +198,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
   const user = await User.findOne({ resetPasswordToken: token, resetPasswordTokenExpiry: { $gt: new Date() } })
 
-  
+
   if (!user) {
     const expiredUser = await User.findOne({ resetPasswordToken: token });
     if (expiredUser) {
@@ -190,8 +209,12 @@ export async function resetPassword(token: string, newPassword: string): Promise
       throw new ForbiddenException(StringConstants.INVALID_TOKEN)
     }
   }
-  if(!user.password) {
+  if (!user.password) {
     throw new ForbiddenException(StringConstants.MISSING_PASSWORD)
+  }
+
+  if (user.googleId) {
+    throw new ForbiddenException(StringConstants.GOOGLE_SIGNED)
   }
 
   if (await comparePasswords(newPassword, user.password)) {
@@ -300,6 +323,6 @@ export async function resendEmailVerificationCode(email: string): Promise<void> 
     to: user.email,
     subject: 'Confirm your email',
     template: 'resend-code',
-    params: { username: user.firstName, code: newVerificationCode },
+    params: { code: newVerificationCode },
   });
 }

@@ -6,6 +6,7 @@ import { StringConstants } from '../../common/strings';
 import { generateUniqueReference } from '../../lib/utils/auth';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
 import { ConflictException, NotFoundException } from '../../common/errors';
+import { createNotification } from '../notifications/notification.service';
 
 const reference = generateUniqueReference()
 
@@ -95,6 +96,13 @@ export async function fundWallet(userId: string, amount: number, callbackUrl: st
         Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
       }
     });
+
+    await createNotification(
+      [user._id],
+      'wallet-funding',
+      'Wallet Funded',
+      `Your wallet was funded with N${amount}`
+    )
 
     return response.data.data;
   } catch (error) {
@@ -210,6 +218,13 @@ export async function withdrawFromWallet(walletId: string, amount: number, bankC
         transactionType: 'withdrawal',
         reference: withdrawalResponse.data.data.reference,
       });
+
+      await createNotification(
+        [wallet.users._id],
+        'wallet-withdrawal',
+        'Withdrawal Successful',
+        `Your withdrawal of N${amount} was successful`
+      )
       await walletTransaction.save();
     } else {
       throw new Error(StringConstants.FAILED_WITHDRAWAL);

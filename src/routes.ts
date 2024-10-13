@@ -13,6 +13,7 @@ import { deleteBankAccountHandler, fetchAvailableBanksHandler, saveBankAccountHa
 import { getUserNotificationsHandler, markAsReadHandler } from "./resources/notifications/notification.controller";
 import { authLimiter, mailLimiter } from "./common/rate-limit";
 import { googleCallbackHandler, googleHandler } from "./resources/auth/google/google.controller";
+import { signupLimiter } from "./common/rate-limit/signup-limiter";
 
 
 
@@ -24,11 +25,11 @@ function routes(app: Express) {
   app.delete('/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
   app.post('/users/username', isUsernameTakenHandler)
 
-  app.post('/auth/request-email-verification', mailLimiter, requestEmailVerificationHandler)
+  app.post('/auth/request-email-verification', signupLimiter, requestEmailVerificationHandler)
   app.post('/auth/complete-profile', completeRegistrationHandler)
   app.post('/auth/login', authLimiter, loginUserHandler)
   app.post('/auth/verify-email', verifyEmailHandler)
-  app.post('/auth/resend-email-verificationCode', resendEmailVerificationCodeHandler)
+  app.post('/auth/resend-email-verificationCode', mailLimiter, resendEmailVerificationCodeHandler)
   app.post('/auth/forgot-password', mailLimiter, forgotPasswordHandler)
   app.post('/auth/reset-password', resetPasswordHandler)
   app.post('/auth/logout', logoutHandler)

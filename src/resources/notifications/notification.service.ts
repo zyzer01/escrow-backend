@@ -2,9 +2,9 @@ import { ConflictException, NotFoundException } from '../../common/errors';
 import { StringConstants } from '../../common/strings';
 import Notification, { INotification } from './notification.model';
 
-export async function createNotification(userIds: string[], type: string, title: string, content: string): Promise<INotification[]> {
+export async function createNotification(userIds: string[], type: string, title: string, message: string): Promise<INotification[]> {
   const notifications = userIds.map((userId) => {
-    return new Notification({ userId, type, title, content });
+    return new Notification({ userId, type, title, message });
   });
 
   return await Notification.insertMany(notifications);

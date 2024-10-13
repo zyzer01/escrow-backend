@@ -3,16 +3,17 @@ import { loginUser, resendEmailVerificationCode, forgotPassword, resetPassword, 
 import { IUser } from '../users/user.model';
 import { StringConstants } from '../../common/strings';
 import { validateLoginInput } from '../../lib/utils/validators';
+import { generateToken } from '../../lib/utils/auth';
 
 export async function requestEmailVerificationHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: "Email is required." });
     }
 
-    await requestEmailVerification(email);
+    await requestEmailVerification(email, password);
     res.status(201).json(StringConstants.EMAIL_VERIFICATION_SENT);
   } catch (error) {
     console.error(error);
@@ -23,8 +24,36 @@ export async function requestEmailVerificationHandler(req: Request, res: Respons
 export async function completeRegistrationHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const userData: IUser = req.body
-    await completeRegistration(userData);
-    res.status(201).json(StringConstants.SIGNUP_SUCCESSFUL);
+    const user = await completeRegistration(userData);
+
+    const token = generateToken({
+      userId: user.id.toString(),
+      role: user.role
+    });
+
+    console.log(token)
+
+    const response = {
+      token,
+      user: {
+        id: user.id.toString(),
+        email: user.email,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified
+      }
+    };
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 3600000,
+      path: '/',
+    });
+    res.status(201).json({
+      message: StringConstants.SIGNUP_SUCCESSFUL,
+      ...response
+    });
   } catch (error) {
     console.error(error);
     next(error)
@@ -37,18 +66,7 @@ export async function loginUserHandler(req: Request, res: Response, next: NextFu
   try {
     const { email, password } = req.body;
 
-    const validationErrors = validateLoginInput(email, password);
-    if (validationErrors) {
-      console.log('Validation errors:', validationErrors);
-      return res.status(400).json({ error: validationErrors });
-    }
-
     const { token, user } = await loginUser(email, password);
-
-    if (!user.isEmailVerified) {
-      console.log('Email not verified:', user.email);
-      return res.status(403).json({ error: StringConstants.EMAIL_NOT_VERIFIED });
-    }
 
     const response = {
       token,
