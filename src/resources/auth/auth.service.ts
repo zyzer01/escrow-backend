@@ -9,6 +9,7 @@ import Wallet from '../wallet/models/wallet.model';
 import { ConflictException, ForbiddenException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '../../common/errors';
 import { validateLoginInput } from '../../lib/utils/validators';
 import { addContactToBrevo } from '../marketing/marketing.service';
+import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
 
 
 dotenv.config()
@@ -129,7 +130,7 @@ export async function loginUser(email: string, password: string): Promise<{ toke
   }
 
   if (!user.isEmailVerified) {
-    throw new ForbiddenException(StringConstants.EMAIL_NOT_VERIFIED)
+    throw new EmailNotVerifiedException(StringConstants.EMAIL_NOT_VERIFIED)
   }
 
   const validationErrors = validateLoginInput(email, password);

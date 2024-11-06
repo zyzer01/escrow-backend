@@ -11,9 +11,11 @@ import { upload } from "./lib/middleware/multer";
 import { deleteFile, uploadFile } from "./file-upload/file-upload.controller";
 import { deleteBankAccountHandler, fetchAvailableBanksHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
 import { getUserNotificationsHandler, markAsReadHandler } from "./resources/notifications/notification.controller";
-import { authLimiter, mailLimiter } from "./common/rate-limit";
+import { forgotPasswordLimiter } from "./common/rate-limit";
 import { googleCallbackHandler, googleHandler } from "./resources/auth/google/google.controller";
 import { signupLimiter } from "./common/rate-limit/signup-limiter";
+import { emailVerificationLimiter } from "./common/rate-limit/email-verification";
+import { authLimiter } from "./common/rate-limit/auth";
 
 
 
@@ -29,8 +31,8 @@ function routes(app: Express) {
   app.post('/auth/complete-profile', completeRegistrationHandler)
   app.post('/auth/login', authLimiter, loginUserHandler)
   app.post('/auth/verify-email', verifyEmailHandler)
-  app.post('/auth/resend-email-verificationCode', mailLimiter, resendEmailVerificationCodeHandler)
-  app.post('/auth/forgot-password', mailLimiter, forgotPasswordHandler)
+  app.post('/auth/resend-email-verificationCode', emailVerificationLimiter, resendEmailVerificationCodeHandler)
+  app.post('/auth/forgot-password', forgotPasswordLimiter, forgotPasswordHandler)
   app.post('/auth/reset-password', resetPasswordHandler)
   app.post('/auth/logout', logoutHandler)
   app.get('/auth/google', googleHandler)

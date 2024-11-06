@@ -4,6 +4,7 @@ import { IUser } from '../users/user.model';
 import { StringConstants } from '../../common/strings';
 import { validateLoginInput } from '../../lib/utils/validators';
 import { generateToken } from '../../lib/utils/auth';
+import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
 
 export async function requestEmailVerificationHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -91,6 +92,14 @@ export async function loginUserHandler(req: Request, res: Response, next: NextFu
 
   } catch (error) {
     console.error('Error during login:', error);
+
+    if (error instanceof EmailNotVerifiedException) {
+      return res.status(403).json({
+        message: error.message,
+        needsEmailVerification: true
+      });
+    }
+
     next(error);
   }
 }

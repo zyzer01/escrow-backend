@@ -194,10 +194,13 @@ export async function withdrawFromWallet(walletId: string, amount: number, bankC
 
     // Initiate withdrawal through Paystack
     const transferRecipient = await createTransferRecipient(wallet.userId, bankCode, accountNumber);
+    
+    // wallet.userId.transferRecipientCode = transferRecipient.recipient_code
 
     const withdrawalResponse = await axios.post(`${PAYSTACK_BASE_URL}/transfer`, {
       source: 'balance',
       amount: amount * 100, // Convert Naira to Kobo
+      reference: reference,
       recipient: transferRecipient.recipient_code,
       reason: 'Wallet Withdrawal'
     }, {
@@ -236,6 +239,8 @@ export async function withdrawFromWallet(walletId: string, amount: number, bankC
 }
 
 async function createTransferRecipient(user: any, bankCode: string, accountNumber: string): Promise<any> {
+  
+  //Remember to check if bank account for user exists, if not, ask them to create a bank account
   try {
     const recipientResponse = await axios.post(`${PAYSTACK_BASE_URL}/transferrecipient`, {
       type: 'nuban',

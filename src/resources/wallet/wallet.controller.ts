@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { paystackCallback, updateWalletBalance, verifyAccountNumber } from "./wallet.service";
 import { fundWallet, withdrawFromWallet } from './wallet.service';
 import { StringConstants } from "../../common/strings";
@@ -47,16 +47,13 @@ export async function withdrawFromWalletHandler(req: Request, res: Response): Pr
 }
 
 
-export async function updateWalletBalanceHandler(req: Request, res: Response): Promise<void> {
+export async function updateWalletBalanceHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
     const { userId, amount } = req.body;
 
     try {
         const data = await updateWalletBalance(userId, amount);
         res.status(200).json({ message: 'Account Funded', data });
-    } catch (error: any) {
-        if (error instanceof NotFoundError) {
-            res.status(404).json({ error: StringConstants.WALLET_NOT_FOUND })
-        }
-        res.status(500).json({ message: error.message });
+    } catch (error) {
+        next(error)
     }
 }
