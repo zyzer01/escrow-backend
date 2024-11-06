@@ -19,6 +19,7 @@ const NotificationSchema: Schema = new Schema(
         "bet-invite",
         "bet-settled",
         "bet-created",
+        "bet-verified",
         "bet-engaged",
         "new-witness",
         "bet-recused",

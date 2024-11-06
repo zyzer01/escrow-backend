@@ -8,8 +8,9 @@ export interface IBet extends Document {
   description: string;
   creatorStake: number;
   opponentStake?: number;
+  totalStake?: number;
   deadline: Date;
-  status: 'pending' | 'accepted' | 'active' | 'verified' | 'closed' | 'canceled' | 'disputed' | 'reversed' | 'refunded';
+  status: 'pending' | 'accepted' | 'active' | 'verified' | 'settled' | 'canceled' | 'disputed' | 'reversed' | 'refunded' | 'closed';
   witnesses: Types.ObjectId[];
   predictions: {
     creatorPrediction: string;
@@ -27,6 +28,7 @@ const BetSchema: Schema = new Schema(
     description: { type: String },
     creatorStake: { type: Number, required: true },
     opponentStake: { type: Number },
+    totalStake: { type: Number },
     deadline: { type: Date },
     status: {
       type: String,
@@ -36,11 +38,12 @@ const BetSchema: Schema = new Schema(
         "accepted",
         "active",
         "verified",
-        "closed",
+        "settled",
         "canceled",
         "disputed",
         "reversed",
         "refunded",
+        "closed",
       ],
       default: "pending",
     },

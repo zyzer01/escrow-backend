@@ -1,0 +1,27 @@
+{{> header}}
+<div class="icon">
+  <img
+    src="https://res.cloudinary.com/dpi4cp2g1/image/upload/v1730909515/bet-rejected_ovnaz3.png"
+    alt="bet rejected icon"
+  />
+</div>
+
+<h1>Bet Invite Rejected</h1>
+<p>Hi {{firstName}},</p>
+<div class="message-body">
+  <p class="message-title"><strong>{{user}} </strong>
+    has rejected your invite to bet on "{{bet title}}</p>
+</div>
+
+<div class="button-container">
+  <a href="https://www.app.escrowbet.co/bets/{{betId}}" class="button">Select
+    another opponent</a>
+</div>
+<div class="warning">
+  <img
+    src="https://res.cloudinary.com/dpi4cp2g1/image/upload/v1730909516/caution_aklov6.png"
+    alt="caution icon"
+  />
+  <span>If you didn't perform this action, please contact support immediately</span>
+</div>
+{{> footer}}

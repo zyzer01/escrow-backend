@@ -11,6 +11,7 @@ import { NotFoundException } from '../../common/errors/NotFoundException';
 import { BadRequestException } from '../../common/errors/BadRequestException';
 import { ConflictException } from '../../common/errors/ConflictException';
 import { UnprocessableEntityException } from '../../common/errors/UnprocessableEntityException';
+import { sendEmail } from '../../mail/mail.service';
 
 export async function createBet(betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     if (!betData.creatorId || !betData.opponentId) {
@@ -104,6 +105,7 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
     bet.opponentStake = opponentStake;
     bet.predictions.opponentPrediction = opponentPrediction;
     bet.status = "accepted";
+    bet.totalStake = opponentStake + bet.creatorStake
     await bet.save();
 
     invitation.status = 'accepted';
@@ -129,7 +131,7 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
  */
 
 export async function rejectBetInvitation(invitationId: string): Promise<IBet | null> {
-    const invitation = await BetInvitation.findById(invitationId)
+    const invitation = await BetInvitation.findById(invitationId).populate('betId').populate('creatorId')
 
     if (!invitation) {
         throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
@@ -138,8 +140,24 @@ export async function rejectBetInvitation(invitationId: string): Promise<IBet | 
         throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
+    const bet = invitation.betId
+    const user = invitation.betId.userId
     invitation.status = 'rejected';
     await invitation.save();
+
+    await createNotification(
+        [invitation.invitedUserId],
+        "bet-rejected",
+        "Bet Rejected",
+        `Your bet "${bet.title}" to your opponent has been rejected.`
+    );
+
+    await sendEmail({
+        to: user.email,
+        subject: 'Bet Rejected',
+        template: 'reject-bet',
+        params: { username: user.firstName },
+    });
 
     return invitation
 }
@@ -212,7 +230,7 @@ export async function settleBet(betId: string, winnerId: string): Promise<IBet |
         await User.updateOne({ _id: witness.userId }, { $inc: { bets_witnessed: 1 } });
     }
 
-    bet.status = 'closed';
+    bet.status = 'settled';
     bet.winnerId = winnerId;
     await bet.save();
 
@@ -288,6 +306,24 @@ export async function reverseBetOutcome(betId: string): Promise<void> {
     await bet.save();
 
     console.log(`Bet outcome reversed. New winner is user: ${newWinnerId}`);
+}
+
+/**
+ * Retrieves the bet history for a user.
+ * @param userId - The ID of the user to retrieve bet history for.
+ * @returns - An array of bets the user has participated in.
+ */
+export async function getBetHistory(userId: Types.ObjectId): Promise<IBet[]> {
+    const bets = await Bet.find({
+        $or: [
+            { creatorId: userId },
+            { opponentId: userId },
+            { witnesses: userId }
+        ],
+        status: { $in: ['closed', 'canceled', 'settled'] }
+    }).sort({ createdAt: -1 });
+
+    return bets;
 }
 
 export async function getBets(): Promise<IBet[]> {

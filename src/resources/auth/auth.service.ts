@@ -112,7 +112,7 @@ export async function completeRegistration(userData: IUser): Promise<IUser> {
     to: savedUser.email,
     subject: 'Welcome to Escrow Bet',
     template: 'welcome',
-    params: { username: savedUser.firstName },
+    params: { firstName: savedUser.firstName },
   });
 
   addContactToBrevo(user.email, user.firstName, user.lastName)
