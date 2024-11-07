@@ -24,12 +24,12 @@ export async function markAsRead(notificationId: string): Promise<INotification 
 }
 
 export async function getUserNotifications(userId: string, isRead?: boolean): Promise<INotification[]> {
-  const query: any = { userId };
+  const query: Record<string, unknown> = { userId };
 
   if (typeof isRead !== 'undefined') {
     query.isRead = isRead;
   }
 
   const notifications = await Notification.find(query).sort({ createdAt: -1 });
-  return notifications
+  return notifications;
 }

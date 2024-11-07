@@ -10,6 +10,7 @@ import { ConflictException, ForbiddenException, NotFoundException, UnauthorizedE
 import { validateLoginInput } from '../../lib/utils/validators';
 import { addContactToBrevo } from '../marketing/marketing.service';
 import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
+import { createNotification } from '../notifications/notification.service';
 
 
 dotenv.config()
@@ -143,6 +144,13 @@ export async function loginUser(email: string, password: string): Promise<{ toke
   if (!isPasswordValid) {
     throw new ForbiddenException(StringConstants.INVALID_PASSWORD);
   }
+
+  await createNotification(
+    [user.id],
+    "system-alert",
+    "New login",
+    `There is a new login from the ip address`
+);
 
   const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
 

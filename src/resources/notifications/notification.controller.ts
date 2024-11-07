@@ -13,16 +13,22 @@ export async function markAsReadHandler(req: Request, res: Response, next: NextF
 }
 
 export async function getUserNotificationsHandler(req: Request, res: Response, next: NextFunction) {
-  const { userId, isRead } = req.body
-  const limit = parseInt(req.query.limit as string, 10)
+  const userId = req.user?.userId;
+  const isRead = req.query.isRead as string | undefined;
+  const limit = parseInt(req.query.limit as string, 10);
+
+  console.log(userId)
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID not found in token' });
+  }
 
   try {
-    const notifications = await getUserNotifications(userId, isRead);
+    const notifications = await getUserNotifications(userId, isRead ? isRead === 'true' : undefined);
     if (!isNaN(limit) && limit > 0) {
-      return res.status(200).json(notifications.slice(0, limit))
+      return res.status(200).json(notifications.slice(0, limit));
     }
-    res.status(200).json(notifications)
+    res.status(200).json(notifications);
   } catch (error) {
-    next(error)
+    next(error);
   }
 }

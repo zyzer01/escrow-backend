@@ -39,7 +39,7 @@ function routes(app: Express) {
   app.get('/auth/google/callback', googleCallbackHandler)
 
   app.post('/api/bets', createBetHandler)
-  app.get('/api/bets', getBetsHandler)
+  app.get('/api/bets', authenticateToken, getBetsHandler)
   app.get('/api/bets/:betId', getBetHandler)
   app.put('/api/bets/:betId', updateBetHandler)
   app.delete('/api/bets/:betId', deleteBetHandler)
@@ -60,7 +60,7 @@ function routes(app: Express) {
   app.post('/api/dispute/resolve', resolveDisputeHandler)
   app.get("/api/dispute", getAllDisputesHandler);
 
-  app.get("/api/notifications", getUserNotificationsHandler)
+  app.get("/api/notifications", authenticateToken, getUserNotificationsHandler)
   app.post("/api/notifications/:id/read", markAsReadHandler)
 
   app.post('/api/wallet/fund', fundWalletHandler);

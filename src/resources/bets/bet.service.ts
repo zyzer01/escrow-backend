@@ -142,6 +142,7 @@ export async function rejectBetInvitation(invitationId: string): Promise<IBet | 
 
     const bet = invitation.betId
     const user = invitation.betId.userId
+    console.log(user)
     invitation.status = 'rejected';
     await invitation.save();
 
@@ -155,8 +156,8 @@ export async function rejectBetInvitation(invitationId: string): Promise<IBet | 
     await sendEmail({
         to: user.email,
         subject: 'Bet Rejected',
-        template: 'reject-bet',
-        params: { username: user.firstName },
+        template: 'bet-rejected',
+        params: { firstName: user.firstName, betId: bet.betId },
     });
 
     return invitation
