@@ -1,0 +1,20 @@
+{{> header}}
+<div class="icon">
+  <img
+    src="https://res.cloudinary.com/dpi4cp2g1/image/upload/v1730936599/bet-invite_nyaefi.png"
+    alt="bet invite icon"
+  />
+</div>
+
+<h1>Bet Invitation</h1>
+<p>Hi {{firstName}},</p>
+<div class="message-body">
+  <p class="message-title"><strong>{{creator}}</strong>
+    has invited you to participate in a bet, "{{betTitle}}" You can view the
+    bet to either accept or reject the invitation</p>
+</div>
+
+<div class="button-container">
+  <a href="https://www.app.escrowbet.co/bets/{{betId}}" class="button">View Bet</a>
+</div>
+{{> footer}}

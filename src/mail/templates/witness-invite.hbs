@@ -1,0 +1,20 @@
+{{> header}}
+<div class="icon">
+  <img
+    src="https://res.cloudinary.com/dpi4cp2g1/image/upload/v1730936392/witness-invite_ckotgc.png"
+    alt="witness invite icon"
+  />
+</div>
+
+<h1>Witness Invitation</h1>
+<p>Hi {{firstName}},</p>
+<div class="message-body">
+  <p class="message-title"><strong>{{creator}}</strong>
+    has invited you to be a witness in a bet, "{{betTitle}}". You can view the
+    bet to either accept or reject the invitation</p>
+</div>
+
+<div class="button-container">
+  <a href="https://www.app.escrowbet.co/bets/{{betId}}" class="button">View Bet</a>
+</div>
+{{> footer}}
