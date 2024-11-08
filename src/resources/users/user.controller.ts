@@ -16,9 +16,11 @@ export async function getAllUsersHandler(req: Request, res: Response, next: Next
 }
 
 export async function getUserHandler(req: Request, res: Response, next: NextFunction) {
-  const { id } = req.params
   try {
-    const user = await getUser(id)
+    const userId = req.user?.userId;
+    const fields = req.query.fields as string | undefined;
+
+    const user = await getUser(userId, fields)
     if (!user) {
       return res.status(404).json(StringConstants.USER_NOT_FOUND)
     }
@@ -29,8 +31,8 @@ export async function getUserHandler(req: Request, res: Response, next: NextFunc
 }
 
 export async function createUserHandler(req: Request, res: Response, next: NextFunction) {
-  const userData = req.body
   try {
+    const userData = req.body
     const user = await createUser(userData);
     res.status(201).json(user)
   } catch (error) {
@@ -39,9 +41,9 @@ export async function createUserHandler(req: Request, res: Response, next: NextF
 }
 
 export async function updateUserHandler(req: Request, res: Response, next: NextFunction) {
-  const userData = req.body
-  const { id } = req.params
   try {
+    const userData = req.body
+    const { id } = req.params
     const updatedUser = await updateUser(id, userData)
     if (!updatedUser) {
       return res.status(404).json({ error: StringConstants.USER_NOT_FOUND });
@@ -53,9 +55,9 @@ export async function updateUserHandler(req: Request, res: Response, next: NextF
 }
 
 export async function deleteUserHandler(req: Request, res: Response, next: NextFunction) {
-  const { id } = req.params;
-
+  
   try {
+    const { id } = req.params;
     const deletedUser = await deleteUser(id);
 
     if (!deletedUser) {
@@ -68,12 +70,12 @@ export async function deleteUserHandler(req: Request, res: Response, next: NextF
 }
 
 export async function isUsernameTakenHandler(req: Request, res: Response, next: NextFunction) {
-  const { username } = req.body;
-
-  if (!username || typeof username !== 'string') {
-    return res.status(400).json({ error: 'Invalid username provided' });
-  }
   try {
+    const { username } = req.body;
+  
+    if (!username || typeof username !== 'string') {
+      return res.status(400).json({ error: 'Invalid username provided' });
+    }
     const isTaken = await isUsernameTaken(username);
     return res.status(200).json({ available: !isTaken });
   } catch (error) {

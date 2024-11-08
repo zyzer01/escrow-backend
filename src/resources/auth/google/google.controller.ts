@@ -71,7 +71,7 @@ export async function googleCallbackHandler(req: Request, res: Response) {
     });
 
     res.cookie('token', token, {
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 3600000, // 1 hour in milliseconds

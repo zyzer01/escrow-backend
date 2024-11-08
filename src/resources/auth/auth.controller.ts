@@ -150,11 +150,10 @@ export async function resetPasswordHandler(req: Request, res: Response, next: Ne
 
 
 export async function logoutHandler(req: Request, res: Response) {
-  // Set the cookie before sending the response
   res.cookie('token', '', {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: 0, // This effectively removes the cookie
     path: '/', // Ensure the cookie is cleared on all paths
   });

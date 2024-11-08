@@ -1,12 +1,25 @@
 import User, { IUser } from './user.model';
 
+const allowedFields = ['username', 'email', 'firstName', 'lastName'];
+const MAX_FIELDS = 5;
+
 export async function getAllUsers(): Promise<IUser[]> {
     return User.find();
 }
 
-export async function getUser(id: string): Promise<IUser | null> {
-    return User.findById(id);
-}
+export async function getUser(id: string, fields?: string): Promise<IUser | null> {
+    const fieldsArray = fields ? fields.split(',') : [];
+    
+    if (fieldsArray.length > MAX_FIELDS) {
+      throw new Error(`You can request a maximum of ${MAX_FIELDS} fields.`);
+    }
+  
+    const selectFields = fieldsArray
+      .filter(field => allowedFields.includes(field))
+      .join(' ');
+  
+    return User.findById(id).select(selectFields);
+  }
 
 export async function createUser(userData: IUser): Promise<IUser> {
     const newUser = new User(userData)

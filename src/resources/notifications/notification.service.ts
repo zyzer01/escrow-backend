@@ -1,26 +1,29 @@
-import { ConflictException, NotFoundException } from '../../common/errors';
-import { StringConstants } from '../../common/strings';
+import { Types } from 'mongoose';
 import Notification, { INotification } from './notification.model';
 
-export async function createNotification(userIds: string[], type: string, title: string, message: string): Promise<INotification[]> {
+export async function createNotification(
+  userIds: string[],
+  type: string,
+  title: string,
+  message: string,
+  betId?: Types.ObjectId,
+  walletTransactionId?: Types.ObjectId
+): Promise<INotification[]> {
   const notifications = userIds.map((userId) => {
-    return new Notification({ userId, type, title, message });
+    return new Notification({ userId, type, title, message, betId, walletTransactionId });
   });
 
-  return await Notification.insertMany(notifications);
+  try {
+    return await Notification.insertMany(notifications);
+  } catch (error) {
+    console.error("Failed to create notifications", error);
+    throw error;
+  }
 }
 
 
 export async function markAsRead(notificationId: string): Promise<INotification | null> {
-  const notification = await Notification.findById(notificationId);
-  if (!notification) {
-    throw new NotFoundException(StringConstants.NOTIFICATION_NOT_FOUND);
-  }
-  if (notification.isRead == true) {
-    throw new ConflictException(StringConstants.NOTIFICATION_ALREADY_READ)
-  }
-  notification.isRead = true;
-  return await notification.save();
+  return Notification.findByIdAndUpdate(notificationId, { isRead: true }, { new: true });
 }
 
 export async function getUserNotifications(userId: string, isRead?: boolean): Promise<INotification[]> {

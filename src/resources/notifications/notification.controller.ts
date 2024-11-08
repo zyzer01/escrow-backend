@@ -5,8 +5,8 @@ export async function markAsReadHandler(req: Request, res: Response, next: NextF
   const { id } = req.params
 
   try {
-    const recusal = await markAsRead(id);
-    return res.status(200).json(recusal);
+    const markedRead = await markAsRead(id);
+    return res.status(200).json(markedRead);
   } catch (error) {
     next(error)
   }
