@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { createUser, deleteUser, getAllUsers, getUser, isUsernameTaken, updateUser } from './user.service';
+import { createUser, deleteUser, getAllUsers, getUser, isUsernameTaken, searchUsers, updateUser } from './user.service';
 import { StringConstants } from "../../common/strings";
 
 export async function getAllUsersHandler(req: Request, res: Response, next: NextFunction) {
@@ -25,6 +25,23 @@ export async function getUserHandler(req: Request, res: Response, next: NextFunc
       return res.status(404).json(StringConstants.USER_NOT_FOUND)
     }
     res.status(200).json(user)
+  } catch (error) {
+    next(error)
+  }
+}
+
+
+export async function searchUsersHandler(req: Request, res: Response, next: NextFunction) {
+  // const userId = req.user?.userId;
+  const { username } = req.query as { username: string };
+
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ error: 'Invalid username' });
+  }
+
+  try {
+    const users = await searchUsers(username);
+    res.status(200).json(users);
   } catch (error) {
     next(error)
   }

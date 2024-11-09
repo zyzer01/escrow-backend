@@ -1,5 +1,5 @@
 import { Express } from "express";
-import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, updateUserHandler } from "./resources/users/user.controller";
+import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, searchUsersHandler, updateUserHandler } from "./resources/users/user.controller";
 import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler, logoutHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
 import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
@@ -25,7 +25,8 @@ function routes(app: Express) {
   app.post('/users', authenticateToken, authorizeRole('admin'), createUserHandler)
   app.put('/users/:id', authenticateToken, updateUserHandler)
   app.delete('/users/:id', authenticateToken, authorizeRole('admin'), deleteUserHandler)
-  app.post('/users/username', isUsernameTakenHandler)
+  app.get('/search-users', authenticateToken, searchUsersHandler);
+  app.post('/users/check-username', isUsernameTakenHandler)
 
   app.post('/auth/request-email-verification', signupLimiter, requestEmailVerificationHandler)
   app.post('/auth/complete-profile', completeRegistrationHandler)
