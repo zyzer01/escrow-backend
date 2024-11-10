@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IBet extends Document {
   creatorId: Types.ObjectId;
-  opponentId?: Types.ObjectId;
+  opponentId: Types.ObjectId;
   winnerId: Types.ObjectId;
   title: string;
   description: string;
@@ -21,8 +21,8 @@ export interface IBet extends Document {
 
 const BetSchema: Schema = new Schema(
   {
-    creatorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    opponentId: { type: Schema.Types.ObjectId, ref: "User" },
+    creatorId: { type: Schema.Types.ObjectId, ref: "User" },
+    opponentId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     winnerId: { type: Schema.Types.ObjectId, ref: "User" },
     title: { type: String, required: true },
     description: { type: String },

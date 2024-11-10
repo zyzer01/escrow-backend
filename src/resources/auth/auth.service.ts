@@ -144,14 +144,7 @@ export async function loginUser(email: string, password: string): Promise<{ toke
   if (!isPasswordValid) {
     throw new ForbiddenException(StringConstants.INVALID_PASSWORD);
   }
-
-  await createNotification(
-    [user.id],
-    "system-alert",
-    "New login",
-    `There is a new login from the ip address`
-);
-
+  
   const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
 
   return { token, user };

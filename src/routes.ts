@@ -39,7 +39,7 @@ function routes(app: Express) {
   app.get('/auth/google', googleHandler)
   app.get('/auth/google/callback', googleCallbackHandler)
 
-  app.post('/api/bets', createBetHandler)
+  app.post('/api/bets', authenticateToken, createBetHandler)
   app.get('/api/bets', authenticateToken, getBetsHandler)
   app.get('/api/bets/:betId', getBetHandler)
   app.put('/api/bets/:betId', updateBetHandler)

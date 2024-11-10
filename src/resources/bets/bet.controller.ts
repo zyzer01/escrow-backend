@@ -3,20 +3,26 @@ import { acceptBetInvitation, cancelBet, createBet, deleteBet, engageBet, getBet
 import { StringConstants } from '../../common/strings';
 
 export async function createBetHandler(req: Request, res: Response, next: NextFunction) {
+    const userId = req.user?.userId;
     const { designatedWitnesses, ...betData } = req.body;
     try {
-        const bet = await createBet(betData, designatedWitnesses);
+        const bet = await createBet(userId, betData, designatedWitnesses);
         res.status(201).json(bet);
     } catch (error) {
         next(error)
     }
 }
 export async function getBetsHandler(req: Request, res: Response, next: NextFunction) {
+    const userId = req.user?.userId;
     try {
-        const bets = await getBets()
-        res.status(200).json(bets)
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const bets = await getBets(userId);
+        res.status(200).json(bets);
     } catch (error) {
-        next(new Error(StringConstants.FAILED_BET_FETCH))
+        next(new Error(StringConstants.FAILED_BET_FETCH));
     }
 }
 
