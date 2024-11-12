@@ -21,7 +21,7 @@ export interface IUser extends Document {
   resetPasswordToken: string | null;
   resetPasswordTokenExpiry: Date | null;
   changeEmailToken: string | null;
-  changeEmailTokenExpiry: Date | null;
+  changeEmailTokenExpiry: Date | null; 
   isEligibleForNeutralWitness: boolean;
   registrationComplete: boolean;
 }

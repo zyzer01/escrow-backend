@@ -4,6 +4,7 @@ import dbConnect from './lib/db';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { errorHandler } from './lib/middleware/ErrorHandler';
 
 const app = express();
@@ -16,7 +17,7 @@ app.use(express.json());
 
 const allowedOrigins = NODE_ENV === 'production'
   ? ['https://app.domain.com']
-  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  : ['http://localhost:3000'];
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -31,7 +32,8 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-app.use(helmet());
+// app.use(helmet());
+app.use(cookieParser());
 
 routes(app);
 

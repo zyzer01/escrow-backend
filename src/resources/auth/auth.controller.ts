@@ -3,8 +3,9 @@ import { loginUser, resendEmailVerificationCode, forgotPassword, resetPassword, 
 import { IUser } from '../users/user.model';
 import { StringConstants } from '../../common/strings';
 import { validateLoginInput } from '../../lib/utils/validators';
-import { generateToken } from '../../lib/utils/auth';
+import { generateTokens, verifyRefreshToken } from '../../lib/utils/auth';
 import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
+import { TokenPayload } from '../../lib/types/auth';
 
 export async function requestEmailVerificationHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -27,31 +28,36 @@ export async function completeRegistrationHandler(req: Request, res: Response, n
     const userData: IUser = req.body
     const user = await completeRegistration(userData);
 
-    const token = generateToken({
-      userId: user.id.toString(),
-      role: user.role
+    const tokens = generateTokens({
+      userId: user.user.id.toString(),
+      role: user.user.role
     });
 
-    console.log(token)
-
-    const response = {
-      token,
-      user: {
-        id: user.id.toString(),
-        email: user.email,
-        role: user.role,
-        isEmailVerified: user.isEmailVerified
-      }
-    };
-
-    res.cookie('token', token, {
+    res.cookie('accessToken', tokens.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 3600000,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/',
     });
-    res.status(201).json({
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/auth/refresh', // Restrict refresh token to refresh endpoint
+    });
+
+    const response = ({
+      user: {
+        id: user.user.id.toString(),
+        email: user.user.email,
+        role: user.user.role,
+        isEmailVerified: user.user.isEmailVerified
+      }
+    });
+    return res.status(201).json({
       message: StringConstants.SIGNUP_SUCCESSFUL,
       ...response
     });
@@ -67,29 +73,37 @@ export async function loginUserHandler(req: Request, res: Response, next: NextFu
   try {
     const { email, password } = req.body;
 
-    const { token, user } = await loginUser(email, password);
+    const { user } = await loginUser(email, password);
 
-    const response = {
-      token,
+    const tokens = generateTokens({
+      userId: user.id.toString(),
+      role: user.role
+    });
+
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 1 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/auth/refresh', // Restrict refresh token to refresh endpoint
+    });
+
+    return res.status(200).json({
       user: {
         id: user.id.toString(),
         email: user.email,
         role: user.role,
         isEmailVerified: user.isEmailVerified
       }
-    };
-
-    res.cookie('token', token, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 3600000,
-      path: '/',
     });
-
-    console.log('Login successful:', response);
-    return res.status(200).json(response);
-
   } catch (error) {
     console.error('Error during login:', error);
 
@@ -100,6 +114,43 @@ export async function loginUserHandler(req: Request, res: Response, next: NextFu
       });
     }
 
+    next(error);
+  }
+}
+
+export async function refreshTokenHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token not found' });
+    }
+
+    const decoded = verifyRefreshToken(refreshToken) as TokenPayload;
+    
+    const tokens = generateTokens({
+      userId: decoded.userId,
+      role: decoded.role
+    });
+
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+    });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/auth/refresh',
+    });
+
+    return res.status(200).json({ message: 'Tokens refreshed successfully' });
+  } catch (error) {
     next(error);
   }
 }
@@ -150,13 +201,8 @@ export async function resetPasswordHandler(req: Request, res: Response, next: Ne
 
 
 export async function logoutHandler(req: Request, res: Response) {
-  res.cookie('token', '', {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 0, // This effectively removes the cookie
-    path: '/', // Ensure the cookie is cleared on all paths
-  });
+  res.clearCookie('accessToken', { path: '/' });
+      res.clearCookie('refreshToken', { path: '/api/auth/refresh' });
 
   return res.status(200).json({ message: 'Logged out successfully' });
 }

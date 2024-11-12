@@ -14,6 +14,7 @@ export interface INotification extends Document {
     | 'system-alert';
   title: string;
   message: string;
+  link: string;
   isRead: boolean;
   createdAt: Date;
   betId?: Types.ObjectId;
@@ -40,6 +41,7 @@ const NotificationSchema: Schema = new Schema(
     },
     title: { type: String, required: true },
     message: { type: String, required: true },
+    link: { type: String },
     isRead: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     betId: { type: Schema.Types.ObjectId, ref: "Bet" },

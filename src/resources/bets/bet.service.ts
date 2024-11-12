@@ -14,17 +14,23 @@ import { UnprocessableEntityException } from '../../common/errors/UnprocessableE
 import { sendEmail } from '../../mail/mail.service';
 
 export async function createBet(userId: string, betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
+    
     if (!betData.opponentId) {
         throw new NotFoundException(StringConstants.OPPONENT_ID_MISSING);
+    }
+    if (betData.opponentId.toString() === userId) {
+        throw new BadRequestException(StringConstants.CANNOT_BE_OWN_OPPONENT);
     }
     if (designatedWitnesses.length > 0 && (designatedWitnesses.length < 2 || designatedWitnesses.length > 3)) {
         throw new BadRequestException(StringConstants.INSUFFICIENT_WITNESS_DESIGNATION);
     }
-    if (designatedWitnesses.length > 0 && (designatedWitnesses.includes(betData.creatorId) || designatedWitnesses.includes(betData.opponentId))) {
-        throw new BadRequestException(StringConstants.INVALID_WITNESS_ASSIGNMENT);
-    }
-
+    
     if (designatedWitnesses.length > 0) {
+        const witnessStringIds = designatedWitnesses.map(id => id.toString());
+        if (witnessStringIds.includes(userId) || witnessStringIds.includes(betData.opponentId.toString())) {
+            throw new BadRequestException(StringConstants.INVALID_WITNESS_ASSIGNMENT);
+        }
+
         const validWitnessIds = await User.find({ _id: { $in: designatedWitnesses } }).distinct('_id');
         if (validWitnessIds.length !== designatedWitnesses.length) {
             throw new NotFoundException(StringConstants.WITNESS_DOES_NOT_EXIST);
@@ -66,12 +72,16 @@ export async function createBet(userId: string, betData: IBet, designatedWitness
 
     await invitation.save();
 
+    const opponentInviteLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}/invite?invitationId=${invitation._id}`;
+    const witnessInviteLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}/witness/invite?invitationId=${invitation._id}`;
+
     await createNotification(
         [betData.opponentId.toString()],
         "bet-invite",
         "Bet Invitation",
         `You have been invited to a bet by ${userId}`,
-        bet._id
+        opponentInviteLink,
+        bet._id,
     );
 
     await createNotification(
@@ -79,15 +89,9 @@ export async function createBet(userId: string, betData: IBet, designatedWitness
         "witness-invite",
         "Witness Invitation",
         `You have been invited to witness a bet`,
+        witnessInviteLink,
         bet._id
     );
-
-    // await sendEmail({
-    //     to: email,
-    //     subject: StringConstants.CONFIRM_EMAIL,
-    //     template: 'confirm-email',
-    //     params: { code: user.emailVerificationCode },
-    //   });
 
     return bet;
 }
@@ -357,10 +361,10 @@ export async function getBetHistory(userId: Types.ObjectId): Promise<IBet[]> {
 }
 
 export async function getBets(userId: string): Promise<IBet[]> {
-    return Bet.find({ $or: [{ creatorId: userId }, { opponentId: userId }] });
+    return Bet.find({ $or: [{ creatorId: userId }, { opponentId: userId }] }).sort({ createdAt: -1 });
 }
-export async function getBet(id: string): Promise<IBet | null> {
-    return Bet.findById(id);
+export async function getBet(betId: string): Promise<IBet | null> {
+    return Bet.findById(betId); 
 }
 
 

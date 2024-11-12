@@ -6,11 +6,12 @@ export async function createNotification(
   type: string,
   title: string,
   message: string,
+  link?: string,
   betId?: Types.ObjectId,
   walletTransactionId?: Types.ObjectId
 ): Promise<INotification[]> {
   const notifications = userIds.map((userId) => {
-    return new Notification({ userId, type, title, message, betId, walletTransactionId });
+    return new Notification({ userId, type, title, message, link, betId, walletTransactionId });
   });
 
   try {

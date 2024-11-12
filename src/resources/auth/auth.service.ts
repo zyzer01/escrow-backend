@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import User, { IUser } from '../users/user.model';
 import dotenv from 'dotenv'
 import { sendEmail } from '../../mail/mail.service';
-import { calculateVerificationCodeExpiryTime, comparePasswords, generateOTP, generateVerificationCode, hashPassword } from '../../lib/utils/auth';
+import { calculateVerificationCodeExpiryTime, comparePasswords, generateOTP, generateTokens, generateVerificationCode, hashPassword } from '../../lib/utils/auth';
 import { StringConstants } from '../../common/strings';
 import Wallet from '../wallet/models/wallet.model';
 import { ConflictException, ForbiddenException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '../../common/errors';
@@ -11,6 +11,7 @@ import { validateLoginInput } from '../../lib/utils/validators';
 import { addContactToBrevo } from '../marketing/marketing.service';
 import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
 import { createNotification } from '../notifications/notification.service';
+import { AuthResponse } from '../../lib/types/auth';
 
 
 dotenv.config()
@@ -84,7 +85,7 @@ export async function verifyEmail(code: number): Promise<void> {
   Complete Registration
 */
 
-export async function completeRegistration(userData: IUser): Promise<IUser> {
+export async function completeRegistration(userData: IUser): Promise<AuthResponse> {
   const user = await User.findOne({ email: userData.email, isEmailVerified: true });
 
   if (!user) {
@@ -118,13 +119,18 @@ export async function completeRegistration(userData: IUser): Promise<IUser> {
 
   addContactToBrevo(user.email, user.firstName, user.lastName)
 
-  return savedUser;
+  const tokens = generateTokens({
+    userId: savedUser._id.toString(),
+    role: savedUser.role
+  });
+
+  return { tokens, user: savedUser };
 }
 
 /*
   Login User
 */
-export async function loginUser(email: string, password: string): Promise<{ token: string; user: IUser }> {
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
   const user: IUser | null = await User.findOne({ email });
   if (!user) {
     throw new NotFoundException(StringConstants.USER_NOT_FOUND);
@@ -145,9 +151,12 @@ export async function loginUser(email: string, password: string): Promise<{ toke
     throw new ForbiddenException(StringConstants.INVALID_PASSWORD);
   }
   
-  const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+  const tokens = generateTokens({
+    userId: user.id,
+    role: user.role
+  });
 
-  return { token, user };
+  return { tokens, user };
 }
 
 /*

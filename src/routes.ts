@@ -1,6 +1,6 @@
 import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, searchUsersHandler, updateUserHandler } from "./resources/users/user.controller";
-import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler, logoutHandler } from "./resources/auth/auth.controller";
+import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler, logoutHandler, refreshTokenHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
 import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
@@ -35,6 +35,7 @@ function routes(app: Express) {
   app.post('/auth/resend-email-verificationCode', emailVerificationLimiter, resendEmailVerificationCodeHandler)
   app.post('/auth/forgot-password', forgotPasswordLimiter, forgotPasswordHandler)
   app.post('/auth/reset-password', resetPasswordHandler)
+  app.post('/auth/refresh', refreshTokenHandler)
   app.post('/auth/logout', logoutHandler)
   app.get('/auth/google', googleHandler)
   app.get('/auth/google/callback', googleCallbackHandler)
@@ -45,7 +46,7 @@ function routes(app: Express) {
   app.put('/api/bets/:betId', updateBetHandler)
   app.delete('/api/bets/:betId', deleteBetHandler)
   app.post('/api/bets/accept', acceptBetInvitationHandler)
-  app.post('/api/bets/reject', rejectBetInvitationHandler)
+  app.post('/api/bets/:invitationId/reject', rejectBetInvitationHandler)
   app.post('/api/bets/:betId/engage', engageBetHandler)
   app.post('/api/bets/settle', settleBetHandler)
   app.post('/api/bets/:betId/cancel', cancelBetHandler)

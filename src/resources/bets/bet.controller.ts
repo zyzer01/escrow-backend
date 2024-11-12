@@ -27,9 +27,9 @@ export async function getBetsHandler(req: Request, res: Response, next: NextFunc
 }
 
 export async function getBetHandler(req: Request, res: Response, next: NextFunction) {
-    const { id } = req.params
+    const { betId } = req.params
     try {
-        const bet = await getBet(id)
+        const bet = await getBet(betId)
         if (!bet) {
             return res.status(404).json({ error: StringConstants.BET_NOT_FOUND })
         }
