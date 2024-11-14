@@ -8,6 +8,16 @@ import { payoutFunds, refund } from '../wallet/wallet.service';
 import Escrow, { IEscrow } from './escrow.model';
 
 
+
+export async function getEscrow(betId: string): Promise<Response> {
+
+    const escrow = await Escrow.findOne({betId})
+        .populate({
+            path: 'betId', select: 'title description creatorStake opponentStake totalStake status createdAt updatedAt'
+        });
+
+    return escrow;
+}
 /**
  * Get total stakes for a specific bet.
  * @param betId - The ID of the bet.

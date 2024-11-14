@@ -12,6 +12,7 @@ import { BadRequestException } from '../../common/errors/BadRequestException';
 import { ConflictException } from '../../common/errors/ConflictException';
 import { UnprocessableEntityException } from '../../common/errors/UnprocessableEntityException';
 import { sendEmail } from '../../mail/mail.service';
+import Escrow from '../escrow/escrow.model';
 
 export async function createBet(userId: string, betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
     
@@ -66,14 +67,21 @@ export async function createBet(userId: string, betData: IBet, designatedWitness
 
     const invitation = new BetInvitation({
         betId: bet._id,
+        creatorId: userId,
         invitedUserId: betData.opponentId,
         creatorStake: betData.creatorStake,
     });
-
     await invitation.save();
 
-    const opponentInviteLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}/invite?invitationId=${invitation._id}`;
-    const witnessInviteLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}/witness/invite?invitationId=${invitation._id}`;
+    const escrow = new Escrow ({
+        betId: bet._id,
+        creatorId: bet.creatorId,
+        creatorStake: bet.creatorStake
+    })
+    await escrow.save();
+
+    const opponentInviteLink = `${process.env.CLIENT_BASE_URL}/invite/${invitation._id}`;
+    const witnessInviteLink = `${process.env.CLIENT_BASE_URL}/witness/invite/${invitation._id}`;
 
     await createNotification(
         [betData.opponentId.toString()],
@@ -123,14 +131,20 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
 
     const invitation = await BetInvitation.findById(invitationId).populate('betId');
 
+    console.log(invitation);
+
     if (!invitation) {
         throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
     }
-    if (!invitation || invitation.status !== 'pending') {
+    if (invitation.status !== 'pending') {
         throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
     const bet = invitation.betId;
+    if (!bet) {
+        throw new NotFoundException('Bet associated with the invitation not found');
+    }
+
     bet.opponentStake = opponentStake;
     bet.predictions.opponentPrediction = opponentPrediction;
     bet.status = "accepted";
@@ -159,39 +173,67 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
  * @param betId - The ID of the bet to reject.
  */
 
-export async function rejectBetInvitation(invitationId: string): Promise<IBet | null> {
-    const invitation = await BetInvitation.findById(invitationId).populate('betId').populate('creatorId')
+export async function rejectBetInvitation(id: string): Promise<IBet | null> {
+    const invitation = await BetInvitation.findById(id)
+        .populate({
+            path: 'betId',
+            select: 'title'
+        })
+        .populate({
+            path: 'creatorId',
+            select: 'firstName email',
+        });
 
     if (!invitation) {
-        throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
+        throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
     }
     if (invitation.status !== 'pending') {
-        throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
+        throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED);
     }
 
-    const bet = invitation.betId
-    const user = invitation.betId.userId
-    console.log(user)
     invitation.status = 'rejected';
     await invitation.save();
 
-    await createNotification(
-        [invitation.invitedUserId],
-        "bet-rejected",
-        "Bet Rejected",
-        `Your bet "${bet.title}" to your opponent has been rejected.`,
-        bet._id
-    );
+    const bet = invitation.betId;
+    const user = invitation.creatorId;
 
-    await sendEmail({
-        to: user.email,
-        subject: 'Bet Rejected',
-        template: 'bet-rejected',
-        params: { firstName: user.firstName, betId: bet.betId },
-    });
+    try {
+        await createNotification(
+            [user._id.toString()],
+            "bet-invite",
+            "Bet Rejected",
+            `Your bet "${bet.title}" to your opponent has been rejected.`,
+            bet._id
+        );
 
-    return invitation
+        await sendEmail({
+            to: user.email,
+            subject: 'Your Opponent Rejected The Invite',
+            template: 'bet-rejected',
+            params: { firstName: user.firstName, betTitle: bet.title, betId: bet._id.toString() },
+        });
+    } catch (error) {
+        console.error("Failed to send email:", error);
+    }
+
+    return invitation;
 }
+
+
+/**
+ * Gets bet details from an invitation
+ * @param invitationId - The ID of the invitation to fetch
+ * @returns The bet associated with the invitation
+ */
+
+export async function getBetInvitation(invitationId: string): Promise<Response> {
+
+    const invitation = await BetInvitation.findById(invitationId)
+        .populate('betId');
+
+    return invitation;
+}
+
 
 /**
  * Engages the bet by setting the state to active.

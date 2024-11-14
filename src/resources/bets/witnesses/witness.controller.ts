@@ -1,6 +1,18 @@
 import { NextFunction, Request, Response } from "express";
-import { acceptWitnessInvite, castVote, determineWinner, rejectWitnessInvite } from "./witness.service";
+import { acceptWitnessInvite, castVote, determineWinner, getWitnessInvite, rejectWitnessInvite } from "./witness.service";
 import { selectNeutralWitness } from "../../../lib/utils/neutralWitness";
+
+
+export async function getWitnessInviteHandler(req: Request, res: Response, next: NextFunction) {
+    const { witnessId } = req.params
+
+    try {
+        const witness = await getWitnessInvite(witnessId)
+        return res.status(200).json(witness)
+    } catch (error) {
+        next(error)
+    }
+}
 
 export async function witnessAcceptInviteHandler(req: Request, res: Response, next: NextFunction) {
     const { id } = req.params
@@ -17,8 +29,8 @@ export async function witnessRejectInviteHandler(req: Request, res: Response, ne
     const { id } = req.params
 
     try {
-        const recusal = await rejectWitnessInvite(id)
-        return res.status(200).json(recusal)
+        const rejection = await rejectWitnessInvite(id)
+        return res.status(200).json(rejection)
     } catch (error) {
         next(error)
     }

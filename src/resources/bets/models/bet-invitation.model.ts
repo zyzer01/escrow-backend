@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IBetInvitation extends Document {
   betId: Types.ObjectId;
+  creatorId: Types.ObjectId;
   invitedUserId: Types.ObjectId;
   status: 'pending' | 'accepted' | 'rejected';
 }
@@ -9,6 +10,7 @@ export interface IBetInvitation extends Document {
 const BetInvitationSchema = new Schema<IBetInvitation>(
   {
     betId: { type: Schema.Types.ObjectId, ref: 'Bet', required: true },
+    creatorId: { type: Schema.Types.ObjectId, ref: 'User' },
     invitedUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     status: { type: String, default: 'pending', enum: ['pending', 'accepted', 'rejected'] },
   },

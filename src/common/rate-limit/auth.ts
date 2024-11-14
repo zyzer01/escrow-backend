@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 
 export const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // Limit each IP to 5 requests per windowMs
+    max: 15, // Limit each IP to 5 requests per windowMs
     handler: (req: Request, res: Response) => {
         const retryAfter = req.rateLimit?.resetTime
             ? Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000)

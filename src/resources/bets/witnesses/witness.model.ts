@@ -5,7 +5,7 @@ export interface IWitness extends Document {
   userId: Types.ObjectId;
   vote: 'creator' | 'opponent'
   type: 'user-designated' | 'neutral';
-  status: 'pending' | 'accepted' | 'reject';
+  status: 'pending' | 'accepted' | 'rejected';
 }
 
 const WitnessSchema = new Schema<IWitness>(
@@ -14,7 +14,7 @@ const WitnessSchema = new Schema<IWitness>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     vote: { type: String, enum: ['creator', 'opponent'], required: false },
     type: { type: String, enum: ['user-designated', 'neutral'], required: true },
-    status: { type: String, enum: ['pending', 'accepted', 'reject'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
   },
   { timestamps: true }
 );

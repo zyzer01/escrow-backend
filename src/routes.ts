@@ -2,9 +2,9 @@ import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, searchUsersHandler, updateUserHandler } from "./resources/users/user.controller";
 import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler, logoutHandler, refreshTokenHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
-import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
-import { castVoteHandler, determineWinnerHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
-import { getTotalStakesHandler } from "./resources/escrow/escrow.controller";
+import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetInvitationHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
+import { castVoteHandler, determineWinnerHandler, getWitnessInviteHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
+import { getEscrowHandler, getTotalStakesHandler } from "./resources/escrow/escrow.controller";
 import { getAllDisputesHandler, logDisputeHandler, resolveDisputeHandler } from "./resources/bet-disputes/bet-dispute.controller";
 import { fundWalletHandler, paystackCallbackHandler, verifyAccountNumberHandler, withdrawFromWalletHandler } from "./resources/wallet/wallet.controller";
 import { upload } from "./lib/middleware/multer";
@@ -45,17 +45,20 @@ function routes(app: Express) {
   app.get('/api/bets/:betId', getBetHandler)
   app.put('/api/bets/:betId', updateBetHandler)
   app.delete('/api/bets/:betId', deleteBetHandler)
+  app.get('/api/bets/invitation/:invitationId', getBetInvitationHandler)
   app.post('/api/bets/accept', acceptBetInvitationHandler)
   app.post('/api/bets/:invitationId/reject', rejectBetInvitationHandler)
   app.post('/api/bets/:betId/engage', engageBetHandler)
   app.post('/api/bets/settle', settleBetHandler)
   app.post('/api/bets/:betId/cancel', cancelBetHandler)
 
+  app.get('/api/bets/witness/:witnessId', getWitnessInviteHandler)
   app.post('/api/bets/witness/:witnessId/accept', witnessAcceptInviteHandler)
   app.post('/api/bets/witness/:witnessId/recuse', witnessRejectInviteHandler)
   app.post('/api/bets/witness/vote', castVoteHandler)
   app.post('/api/bets/witness/:witnessId/judge', determineWinnerHandler)
 
+  app.get('/api/escrow/:betId', getEscrowHandler)
   app.get('/api/escrow/:id/stakes', getTotalStakesHandler)
 
   app.post('/api/dispute/log', logDisputeHandler)

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { acceptBetInvitation, cancelBet, createBet, deleteBet, engageBet, getBet, getBets, rejectBetInvitation, settleBet, updateBet } from "./bet.service"
+import { acceptBetInvitation, cancelBet, createBet, deleteBet, engageBet, getBet, getBetInvitation, getBets, rejectBetInvitation, settleBet, updateBet } from "./bet.service"
 import { StringConstants } from '../../common/strings';
 
 export async function createBetHandler(req: Request, res: Response, next: NextFunction) {
@@ -78,9 +78,20 @@ export async function acceptBetInvitationHandler(req: Request, res: Response, ne
 }
 
 export async function rejectBetInvitationHandler(req: Request, res: Response, next: NextFunction) {
-    const { invitationId } = req.body
+    const { invitationId } = req.params;
     try {
         const invitation = await rejectBetInvitation(invitationId)
+        return res.status(200).json(invitation)
+    } catch (error) {
+        next(error)
+    }
+}
+
+export async function getBetInvitationHandler(req: Request, res: Response, next: NextFunction) {
+    const { invitationId } = req.params
+
+    try {
+        const invitation = await getBetInvitation(invitationId)
         return res.status(200).json(invitation)
     } catch (error) {
         next(error)

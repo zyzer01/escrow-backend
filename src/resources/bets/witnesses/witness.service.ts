@@ -5,6 +5,17 @@ import { addToUserWallet, payoutFunds } from "../../wallet/wallet.service";
 import Bet from "../models/bet.model";
 import Witness from './witness.model';
 
+
+export async function getWitnessInvite(witnessId: string): Promise<Response> {
+
+    const witness = await Witness.findById(witnessId)
+        .populate({
+            path: 'betId'
+        });
+
+    return witness;
+}
+
 /**
  * Accepts witness role for bet
  */
@@ -49,7 +60,7 @@ export async function rejectWitnessInvite(witnessId: string): Promise<Response> 
         throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
     }
 
-    witness.status = 'recused';
+    witness.status = 'rejected';
     await witness.save();
 
     return witness
