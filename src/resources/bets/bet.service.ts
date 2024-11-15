@@ -13,9 +13,10 @@ import { ConflictException } from '../../common/errors/ConflictException';
 import { UnprocessableEntityException } from '../../common/errors/UnprocessableEntityException';
 import { sendEmail } from '../../mail/mail.service';
 import Escrow from '../escrow/escrow.model';
+import { UnauthorizedException } from '../../common/errors';
 
 export async function createBet(userId: string, betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
-    
+
     if (!betData.opponentId) {
         throw new NotFoundException(StringConstants.OPPONENT_ID_MISSING);
     }
@@ -25,7 +26,7 @@ export async function createBet(userId: string, betData: IBet, designatedWitness
     if (designatedWitnesses.length > 0 && (designatedWitnesses.length < 2 || designatedWitnesses.length > 3)) {
         throw new BadRequestException(StringConstants.INSUFFICIENT_WITNESS_DESIGNATION);
     }
-    
+
     if (designatedWitnesses.length > 0) {
         const witnessStringIds = designatedWitnesses.map(id => id.toString());
         if (witnessStringIds.includes(userId) || witnessStringIds.includes(betData.opponentId.toString())) {
@@ -73,7 +74,7 @@ export async function createBet(userId: string, betData: IBet, designatedWitness
     });
     await invitation.save();
 
-    const escrow = new Escrow ({
+    const escrow = new Escrow({
         betId: bet._id,
         creatorId: bet.creatorId,
         creatorStake: bet.creatorStake
@@ -203,6 +204,7 @@ export async function rejectBetInvitation(id: string): Promise<IBet | null> {
             "bet-invite",
             "Bet Rejected",
             `Your bet "${bet.title}" to your opponent has been rejected.`,
+            `${process.env.CLIENT_BASE_URL}/bets/${bet._id}`,
             bet._id
         );
 
@@ -223,13 +225,20 @@ export async function rejectBetInvitation(id: string): Promise<IBet | null> {
 /**
  * Gets bet details from an invitation
  * @param invitationId - The ID of the invitation to fetch
+ * @param userId - The ID of the invited user
  * @returns The bet associated with the invitation
  */
 
-export async function getBetInvitation(invitationId: string): Promise<Response> {
+export async function getBetInvitation(userId: string, invitationId: string): Promise<Response> {
 
-    const invitation = await BetInvitation.findById(invitationId)
-        .populate('betId');
+    const invitation = await BetInvitation.findOne({
+        _id: invitationId,
+        invitedUserId: userId
+    }).populate('betId');
+
+    if (!invitation) {
+        throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
+    }
 
     return invitation;
 }
@@ -405,8 +414,25 @@ export async function getBetHistory(userId: Types.ObjectId): Promise<IBet[]> {
 export async function getBets(userId: string): Promise<IBet[]> {
     return Bet.find({ $or: [{ creatorId: userId }, { opponentId: userId }] }).sort({ createdAt: -1 });
 }
-export async function getBet(betId: string): Promise<IBet | null> {
-    return Bet.findById(betId); 
+
+export async function getBet(userId: string, betId: string): Promise<IBet | null> {
+    if (!userId) {
+        throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
+    }
+
+    const bet = await Bet.findOne({
+        _id: betId,
+        $or: [
+            { creatorId: userId },
+            { opponentId: userId }
+        ]
+    });
+
+    if (!bet) {
+        throw new NotFoundException(StringConstants.BET_NOT_FOUND);
+    }
+
+    return bet;
 }
 
 

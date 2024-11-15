@@ -1,11 +1,13 @@
 import { NextFunction, Request, Response } from 'express';
-import { loginUser, resendEmailVerificationCode, forgotPassword, resetPassword, verifyEmail, requestEmailVerification, completeRegistration } from './auth.service';
-import { IUser } from '../users/user.model';
+import { loginUser, resendEmailVerificationCode, forgotPassword, resetPassword, verifyEmail, requestEmailVerification, completeRegistration, checkAuthToken } from './auth.service';
+import User, { IUser } from '../users/user.model';
 import { StringConstants } from '../../common/strings';
 import { validateLoginInput } from '../../lib/utils/validators';
 import { generateTokens, verifyRefreshToken } from '../../lib/utils/auth';
 import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
 import { TokenPayload } from '../../lib/types/auth';
+import { NotFoundException, UnauthorizedException } from '../../common/errors';
+import { Session } from './session/session.model';
 
 export async function requestEmailVerificationHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -25,13 +27,8 @@ export async function requestEmailVerificationHandler(req: Request, res: Respons
 
 export async function completeRegistrationHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const userData: IUser = req.body
-    const user = await completeRegistration(userData);
-
-    const tokens = generateTokens({
-      userId: user.user.id.toString(),
-      role: user.user.role
-    });
+    const userData = req.body;
+    const { tokens, user } = await completeRegistration(req, userData);
 
     res.cookie('accessToken', tokens.accessToken, {
       httpOnly: true,
@@ -46,24 +43,21 @@ export async function completeRegistrationHandler(req: Request, res: Response, n
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/auth/refresh', // Restrict refresh token to refresh endpoint
+      path: '/',
     });
 
-    const response = ({
-      user: {
-        id: user.user.id.toString(),
-        email: user.user.email,
-        role: user.user.role,
-        isEmailVerified: user.user.isEmailVerified
-      }
-    });
     return res.status(201).json({
-      message: StringConstants.SIGNUP_SUCCESSFUL,
-      ...response
+      message: 'Signup successful',
+      user: {
+        id: user.id.toString(),
+        email: user.email,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+      },
     });
   } catch (error) {
     console.error(error);
-    next(error)
+    next(error);
   }
 }
 
@@ -72,48 +66,40 @@ export async function completeRegistrationHandler(req: Request, res: Response, n
 export async function loginUserHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body;
+    const { user, tokens } = await loginUser({ email, password, request: req });
 
-    const { user } = await loginUser(email, password);
-
-    const tokens = generateTokens({
-      userId: user.id.toString(),
-      role: user.role
-    });
-
-    res.cookie('accessToken', tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 1 * 60 * 1000, // 15 minutes
-      path: '/',
-    });
-
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/auth/refresh', // Restrict refresh token to refresh endpoint
-    });
-
-    return res.status(200).json({
+    const response = {
+      tokens,
       user: {
         id: user.id.toString(),
         email: user.email,
         role: user.role,
         isEmailVerified: user.isEmailVerified
       }
+    };
+
+    // Securely set cookies for tokens
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      path: '/',
+      maxAge: 1 * 60 * 1000, // 15 minutes
+      domain: process.env.COOKIE_DOMAIN,
     });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+      domain: process.env.COOKIE_DOMAIN,
+    });
+
+    console.log('Login successful:', response);
+    return res.status(200).json(response);
   } catch (error) {
-    console.error('Error during login:', error);
-
-    if (error instanceof EmailNotVerifiedException) {
-      return res.status(403).json({
-        message: error.message,
-        needsEmailVerification: true
-      });
-    }
-
     next(error);
   }
 }
@@ -121,39 +107,55 @@ export async function loginUserHandler(req: Request, res: Response, next: NextFu
 export async function refreshTokenHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const refreshToken = req.cookies.refreshToken;
-    
+
     if (!refreshToken) {
-      return res.status(401).json({ error: 'Refresh token not found' });
+      throw new UnauthorizedException('Refresh token not found');
     }
 
     const decoded = verifyRefreshToken(refreshToken) as TokenPayload;
-    
+
+    // Check if the session is valid
+    const session = await Session.findById(decoded.sessionId);
+    if (!session || !session.isValid) {
+      throw new UnauthorizedException('Session is invalid or expired');
+    }
+
+    // Generate new tokens
     const tokens = generateTokens({
       userId: decoded.userId,
-      role: decoded.role
+      role: decoded.role,
+      sessionId: session._id.toString(),
     });
 
+    // Refresh token cookie
     res.cookie('accessToken', tokens.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
+      maxAge: 15 * 60 * 1000,
+      domain: process.env.COOKIE_DOMAIN,
     });
 
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/auth/refresh',
-    });
-
-    return res.status(200).json({ message: 'Tokens refreshed successfully' });
+    return res.status(200).json({ tokens });
   } catch (error) {
     next(error);
   }
 }
+
+export const checkAuthTokenHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.cookies['accessToken'];
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const userData = await checkAuthToken(token);
+    res.status(200).json({ userId: userData.userId, role: userData.role });
+  } catch (error) {
+    next(error)
+  }
+};
 
 
 export async function verifyEmailHandler(req: Request, res: Response, next: NextFunction) {
@@ -202,7 +204,7 @@ export async function resetPasswordHandler(req: Request, res: Response, next: Ne
 
 export async function logoutHandler(req: Request, res: Response) {
   res.clearCookie('accessToken', { path: '/' });
-      res.clearCookie('refreshToken', { path: '/api/auth/refresh' });
+  res.clearCookie('refreshToken', { path: '/auth/refresh' });
 
   return res.status(200).json({ message: 'Logged out successfully' });
 }

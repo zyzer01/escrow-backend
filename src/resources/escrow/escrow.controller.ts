@@ -5,10 +5,10 @@ export async function getEscrowHandler(req: Request, res: Response, next: NextFu
   const { betId } = req.params
 
   try {
-      const witness = await getEscrow(betId)
-      return res.status(200).json(witness)
+    const witness = await getEscrow(betId)
+    return res.status(200).json(witness)
   } catch (error) {
-      next(error)
+    next(error)
   }
 }
 

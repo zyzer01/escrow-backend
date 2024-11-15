@@ -4,7 +4,6 @@ import { Request, Response } from 'express';
 import { generateTokens } from '../../../lib/utils/auth';
 import User from '../../users/user.model';
 import { CLIENT_BASE_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SERVER_URL } from '../../../config/google';
-import { Session } from '../session/session.model';
 
 const client = new OAuth2Client(
   GOOGLE_CLIENT_ID,
@@ -12,7 +11,7 @@ const client = new OAuth2Client(
   `${SERVER_URL}/auth/google/callback`
 );
 
-export async function googleHandler(req: Request, res: Response) {
+export async function googleHandler (req: Request, res: Response) {
   const authUrl = client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email']
@@ -35,7 +34,7 @@ export async function googleCallbackHandler(req: Request, res: Response) {
 
     const ticket = await client.verifyIdToken({
       idToken: tokens.id_token!,
-      audience: GOOGLE_CLIENT_ID
+      audience: process.env.GOOGLE_CLIENT_ID
     });
 
     const payload = ticket.getPayload();
@@ -62,37 +61,21 @@ export async function googleCallbackHandler(req: Request, res: Response) {
         if (error instanceof MongoServerError && error.code === 11000) {
           return res.redirect(`${CLIENT_BASE_URL}/auth/error?error=EmailAlreadyRegistered`);
         }
-        throw error;
+        throw error; // re-throw the error if it's not a duplicate key error
       }
     }
 
-    const session = await Session.create({
-      userId: user.id,
-      userAgent: req.headers['user-agent'] || 'unknown',
-      ip: req.ip,
-      isValid: true,
-    });
-
-    const { accessToken, refreshToken } = generateTokens({
+    const token = generateTokens({
       userId: user._id.toString(),
-      role: user.role,
-      sessionId: session._id.toString()
+      role: user.role
     });
 
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
+    res.cookie('token', token, {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 1 * 60 * 1000, // 15 minutes
+      maxAge: 3600000, // 1 hour in milliseconds
       path: '/',
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/auth/refresh',
     });
 
     return res.redirect(`${CLIENT_BASE_URL}`);

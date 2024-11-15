@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import User, { IUser } from '../users/user.model';
 import dotenv from 'dotenv'
 import { sendEmail } from '../../mail/mail.service';
@@ -12,11 +12,14 @@ import { addContactToBrevo } from '../marketing/marketing.service';
 import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
 import { createNotification } from '../notifications/notification.service';
 import { AuthResponse } from '../../lib/types/auth';
+import { Session } from './session/session.model';
+import { Request } from 'express';
 
 
 dotenv.config()
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
+
 
 /*
   Initiate Registration
@@ -85,14 +88,15 @@ export async function verifyEmail(code: number): Promise<void> {
   Complete Registration
 */
 
-export async function completeRegistration(userData: IUser): Promise<AuthResponse> {
+export async function completeRegistration(request: Request, userData: IUser): Promise<AuthResponse> {
   const user = await User.findOne({ email: userData.email, isEmailVerified: true });
 
   if (!user) {
-    throw new NotFoundException(StringConstants.USER_NOT_FOUND);
+    throw new NotFoundException('User not found');
   }
+
   if (!user.isEmailVerified) {
-    throw new UnprocessableEntityException(StringConstants.EMAIL_NOT_VERIFIED);
+    throw new UnprocessableEntityException('Email not verified');
   }
 
   user.username = userData.username;
@@ -117,11 +121,20 @@ export async function completeRegistration(userData: IUser): Promise<AuthRespons
     params: { firstName: savedUser.firstName },
   });
 
-  addContactToBrevo(user.email, user.firstName, user.lastName)
+  addContactToBrevo(savedUser.email, savedUser.firstName, savedUser.lastName);
 
+  const session = await Session.create({
+    userId: user.id,
+    userAgent: request.headers['user-agent'] || 'unknown',
+    ip: request.ip,
+    isValid: true,
+  });
+  
+  // Create tokens immediately after registration
   const tokens = generateTokens({
-    userId: savedUser._id.toString(),
-    role: savedUser.role
+    userId: savedUser._id,
+    role: savedUser.role,
+    sessionId: session._id.toString(),
   });
 
   return { tokens, user: savedUser };
@@ -130,33 +143,58 @@ export async function completeRegistration(userData: IUser): Promise<AuthRespons
 /*
   Login User
 */
-export async function loginUser(email: string, password: string): Promise<AuthResponse> {
-  const user: IUser | null = await User.findOne({ email });
+
+interface LoginParams {
+  email: string;
+  password: string;
+  request: Request;
+}
+
+export async function loginUser({ email, password, request }: LoginParams): Promise<AuthResponse> {
+  const user = await User.findOne({ email });
   if (!user) {
     throw new NotFoundException(StringConstants.USER_NOT_FOUND);
   }
 
   if (!user.isEmailVerified) {
-    throw new EmailNotVerifiedException(StringConstants.EMAIL_NOT_VERIFIED)
+    throw new EmailNotVerifiedException(StringConstants.EMAIL_NOT_VERIFIED);
   }
-
-  const validationErrors = validateLoginInput(email, password);
-  
-    if (validationErrors) {
-      throw new ForbiddenException('Invalid Email or password')
-    }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     throw new ForbiddenException(StringConstants.INVALID_PASSWORD);
   }
-  
+
+  // Create a session with a valid status
+  const session = await Session.create({
+    userId: user.id,
+    userAgent: request.headers['user-agent'] || 'unknown',
+    ip: request.ip,
+    isValid: true,
+  });
+
   const tokens = generateTokens({
     userId: user.id,
-    role: user.role
+    role: user.role,
+    sessionId: session._id.toString(),
   });
 
   return { tokens, user };
+}
+
+export async function checkAuthToken(token: string) {
+  try {
+    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET) as JwtPayload;
+    const user = await User.findById(decoded.userId);
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return { userId: user.id, role: user.role };
+  } catch (error) {
+    throw new Error('Invalid or expired token');
+  }
 }
 
 /*

@@ -11,10 +11,14 @@ import Escrow, { IEscrow } from './escrow.model';
 
 export async function getEscrow(betId: string): Promise<Response> {
 
-    const escrow = await Escrow.findOne({betId})
+    const escrow = await Escrow.findOne({ betId })
         .populate({
             path: 'betId', select: 'title description creatorStake opponentStake totalStake status createdAt updatedAt'
         });
+
+    if (!escrow) {
+        throw new NotFoundException(StringConstants.ESCROW_NOT_FOUND)
+    }
 
     return escrow;
 }

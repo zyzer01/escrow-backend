@@ -82,6 +82,7 @@ export enum StringConstants {
   SIGNUP_SUCCESSFUL = "Sign up was successful, welcome.",
   TRANSACTION_PROCESSED = "Transaction has already been processed",
   USER_NOT_FOUND = "User not found",
+  UNAUTHORIZED = "Unauthorized, unable to fetch resource, try logging in",
   WALLET_NOT_FOUND = "Wallet not found",
   WITNESS_NOT_FOUND = "Witness not found",
   WITNESS_DOES_NOT_EXIST = "One or more witness IDs do not match any user ID in the database",

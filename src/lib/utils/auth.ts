@@ -34,7 +34,7 @@ export function generateTokens(payload: TokenPayload) {
 
 export function verifyAccessToken(token: string) {
     try {
-        return jwt.verify(token, ACCESS_TOKEN_SECRET);
+        return jwt.verify(token, ACCESS_TOKEN_SECRET) as TokenPayload;
     } catch (error) {
         throw new Error('Invalid access token');
     }

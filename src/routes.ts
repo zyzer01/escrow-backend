@@ -1,6 +1,6 @@
 import { Express } from "express";
 import { createUserHandler, deleteUserHandler, getAllUsersHandler, getUserHandler, isUsernameTakenHandler, searchUsersHandler, updateUserHandler } from "./resources/users/user.controller";
-import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler, logoutHandler, refreshTokenHandler } from "./resources/auth/auth.controller";
+import { completeRegistrationHandler, forgotPasswordHandler, requestEmailVerificationHandler, loginUserHandler, resendEmailVerificationCodeHandler, resetPasswordHandler, verifyEmailHandler, logoutHandler, refreshTokenHandler, checkAuthTokenHandler } from "./resources/auth/auth.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
 import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteBetHandler, engageBetHandler, getBetHandler, getBetInvitationHandler, getBetsHandler, rejectBetInvitationHandler, settleBetHandler, updateBetHandler } from "./resources/bets/bet.controller";
 import { castVoteHandler, determineWinnerHandler, getWitnessInviteHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
@@ -36,13 +36,14 @@ function routes(app: Express) {
   app.post('/auth/forgot-password', forgotPasswordLimiter, forgotPasswordHandler)
   app.post('/auth/reset-password', resetPasswordHandler)
   app.post('/auth/refresh', refreshTokenHandler)
+  app.post('/auth/check-auth-token', checkAuthTokenHandler)
   app.post('/auth/logout', logoutHandler)
   app.get('/auth/google', googleHandler)
   app.get('/auth/google/callback', googleCallbackHandler)
 
   app.post('/api/bets', authenticateToken, createBetHandler)
   app.get('/api/bets', authenticateToken, getBetsHandler)
-  app.get('/api/bets/:betId', getBetHandler)
+  app.get('/api/bets/:betId', authenticateToken, getBetHandler)
   app.put('/api/bets/:betId', updateBetHandler)
   app.delete('/api/bets/:betId', deleteBetHandler)
   app.get('/api/bets/invitation/:invitationId', getBetInvitationHandler)
