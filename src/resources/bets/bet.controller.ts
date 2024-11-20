@@ -86,16 +86,16 @@ export async function rejectBetInvitationHandler(req: Request, res: Response, ne
 }
 
 export async function getBetInvitationHandler(req: Request, res: Response, next: NextFunction) {
-  const userId = req.user?.userId;
-    const { invitationId } = req.params
-
+    const userId = req.user?.userId;
+    const { invitationId } = req.params;
+  
     try {
-        const invitation = await getBetInvitation(userId, invitationId)
-        return res.status(200).json(invitation)
+      const invitation = await getBetInvitation(userId, invitationId);
+      res.status(200).json(invitation);
     } catch (error) {
-        next(error)
+      next(error);
     }
-}
+  }
 
 export async function engageBetHandler(req: Request, res: Response, next: NextFunction) {
     const { betId } = req.params;

@@ -14,6 +14,7 @@ import { UnprocessableEntityException } from '../../common/errors/UnprocessableE
 import { sendEmail } from '../../mail/mail.service';
 import Escrow from '../escrow/escrow.model';
 import { UnauthorizedException } from '../../common/errors';
+import { BetQueryParams } from '../../lib/types/bet';
 
 export async function createBet(userId: string, betData: IBet, designatedWitnesses: Types.ObjectId[]): Promise<IBet> {
 
@@ -130,7 +131,10 @@ export async function updateBet(betId: string, betData: Partial<IBet>): Promise<
 
 export async function acceptBetInvitation(invitationId: string, opponentStake: number, opponentPrediction: string): Promise<IBet | null> {
 
-    const invitation = await BetInvitation.findById(invitationId).populate('betId');
+    const invitation = await BetInvitation.findById(invitationId).populate('betId').populate({
+        path: 'creatorId',
+        select: 'email firstName'
+    });
 
     console.log(invitation);
 
@@ -155,6 +159,8 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
     invitation.status = 'accepted';
     await invitation.save();
 
+    const user = invitation.betId.creatorId;
+
     await lockFunds({
         betId: bet._id,
         creatorId: bet.creatorId,
@@ -164,7 +170,14 @@ export async function acceptBetInvitation(invitationId: string, opponentStake: n
         status: 'locked'
     });
 
-    await createNotification([bet.opponentId], "bet-invite", "Bet Invite", `Your have been invited to a bet "${bet.title}"`, bet._id);
+    await createNotification([bet.creatorId], "bet-invite", "Bet Accepted", `Your bet "${bet.title}" has been accepted`, bet._id);
+
+    await sendEmail({
+        to: user.email,
+        subject: 'Your Opponent Rejected The Invite',
+        template: 'bet-rejected',
+        params: { firstName: user.firstName, betTitle: bet.title, betId: bet._id.toString() },
+    });
 
     return invitation
 }
@@ -229,18 +242,23 @@ export async function rejectBetInvitation(id: string): Promise<IBet | null> {
  * @returns The bet associated with the invitation
  */
 
-export async function getBetInvitation(userId: string, invitationId: string): Promise<Response> {
+export async function getBetInvitation(userId: string, invitationId: string) {
+    try {
+        const invitation = await BetInvitation.findOne({
+            _id: invitationId,
+            invitedUserId: userId,
+        }).populate("betId");
 
-    const invitation = await BetInvitation.findOne({
-        _id: invitationId,
-        invitedUserId: userId
-    }).populate('betId');
-
-    if (!invitation) {
-        throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
+        if (!invitation) {
+            throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
+        }
+        if (!invitation.betId) {
+            throw new NotFoundException(StringConstants.BET_NOT_FOUND);
+        }
+        return invitation;
+    } catch (error) {
+        throw new Error(`Failed to retrieve invitation: ${error}`);
     }
-
-    return invitation;
 }
 
 
@@ -412,8 +430,56 @@ export async function getBetHistory(userId: Types.ObjectId): Promise<IBet[]> {
 }
 
 export async function getBets(userId: string): Promise<IBet[]> {
-    return Bet.find({ $or: [{ creatorId: userId }, { opponentId: userId }] }).sort({ createdAt: -1 });
+    return Bet.find({
+        $or: [
+            { creatorId: userId },
+            { opponentId: userId, status: 'accepted' }
+        ]
+    }).sort({ createdAt: -1 });
 }
+
+// export async function getBets({
+//     userId,
+//     query = '',
+//     page = 1,
+//     limit = 10,
+//     sortBy = 'createdAt',
+//     sortOrder = 'desc',
+//     status,
+//     betType,
+//     deadline,
+//   }: BetQueryParams & { userId: string }): Promise<{ bets: IBet[], total: number }> {
+//     const skip = (page - 1) * limit;
+
+//     let queryObj: any = {
+//       $or: [
+//         { creatorId: userId },
+//         { opponentId: userId, status: 'accepted' }
+//       ]
+//     };
+
+//     if (query) {
+//       queryObj.$and = [{
+//         $or: [
+//           { title: { $regex: query, $options: 'i' } },
+//           { description: { $regex: query, $options: 'i' } }
+//         ]
+//       }];
+//     }
+
+//     if (status) queryObj.status = status;
+//     if (betType) queryObj.betType = betType;
+//     if (deadline) queryObj.deadline = { $lte: new Date(deadline) };
+
+//     const total = await Bet.countDocuments(queryObj);
+//     const bets = await Bet.find(queryObj)
+//       .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     return { bets, total };
+//   }
+
 
 export async function getBet(userId: string, betId: string): Promise<IBet | null> {
     if (!userId) {

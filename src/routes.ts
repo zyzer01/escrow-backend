@@ -6,7 +6,7 @@ import { acceptBetInvitationHandler, cancelBetHandler, createBetHandler, deleteB
 import { castVoteHandler, determineWinnerHandler, getWitnessInviteHandler, witnessAcceptInviteHandler, witnessRejectInviteHandler } from "./resources/bets/witnesses/witness.controller";
 import { getEscrowHandler, getTotalStakesHandler } from "./resources/escrow/escrow.controller";
 import { getAllDisputesHandler, logDisputeHandler, resolveDisputeHandler } from "./resources/bet-disputes/bet-dispute.controller";
-import { fundWalletHandler, paystackCallbackHandler, verifyAccountNumberHandler, withdrawFromWalletHandler } from "./resources/wallet/wallet.controller";
+import { fundWalletHandler, getWalletBalanceHandler, paystackCallbackHandler, verifyAccountNumberHandler, withdrawFromWalletHandler } from "./resources/wallet/wallet.controller";
 import { upload } from "./lib/middleware/multer";
 import { deleteFile, uploadFile } from "./file-upload/file-upload.controller";
 import { deleteBankAccountHandler, fetchAvailableBanksHandler, saveBankAccountHandler, setPrimaryBankAccountHandler } from "./resources/bank-account/bank-account.controller";
@@ -46,7 +46,7 @@ function routes(app: Express) {
   app.get('/api/bets/:betId', authenticateToken, getBetHandler)
   app.put('/api/bets/:betId', updateBetHandler)
   app.delete('/api/bets/:betId', deleteBetHandler)
-  app.get('/api/bets/invitation/:invitationId', getBetInvitationHandler)
+  app.get('/api/bets/invitation/:invitationId', authenticateToken, getBetInvitationHandler)
   app.post('/api/bets/accept', acceptBetInvitationHandler)
   app.post('/api/bets/:invitationId/reject', rejectBetInvitationHandler)
   app.post('/api/bets/:betId/engage', engageBetHandler)
@@ -69,6 +69,7 @@ function routes(app: Express) {
   app.get("/api/notifications", authenticateToken, getUserNotificationsHandler)
   app.post("/api/notifications/:id/read", markAsReadHandler)
 
+  app.get('/wallet/balance', authenticateToken, getWalletBalanceHandler);
   app.post('/api/wallet/fund', fundWalletHandler);
   app.post('/api/wallet/fund-callback', paystackCallbackHandler);
   app.post('/api/wallet/verify-account', verifyAccountNumberHandler);

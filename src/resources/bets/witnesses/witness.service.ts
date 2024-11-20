@@ -13,6 +13,10 @@ export async function getWitnessInvite(witnessId: string): Promise<Response> {
             path: 'betId'
         });
 
+        if (!witness) {
+            throw new Error('Witness invitation not found');
+        }
+
     return witness;
 }
 

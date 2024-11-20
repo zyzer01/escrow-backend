@@ -83,7 +83,7 @@ export async function googleCallbackHandler(req: Request, res: Response) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 1 * 60 * 1000, // 15 minutes
+      maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/',
     });
 

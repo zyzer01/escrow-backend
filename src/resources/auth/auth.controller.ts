@@ -84,7 +84,7 @@ export async function loginUserHandler(req: Request, res: Response, next: NextFu
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       path: '/',
-      maxAge: 1 * 60 * 1000, // 15 minutes
+      maxAge: 15 * 60 * 1000, // 15 minutes
       domain: process.env.COOKIE_DOMAIN,
     });
 

@@ -1,11 +1,11 @@
-import Wallet from './models/wallet.model';
+import Wallet, { IWallet } from './models/wallet.model';
 import WalletTransaction from './models/wallet-transaction.model';
 import User from '../users/user.model';
 import axios from 'axios'
 import { StringConstants } from '../../common/strings';
 import { generateUniqueReference } from '../../lib/utils/auth';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
-import { ConflictException, NotFoundException } from '../../common/errors';
+import { ConflictException, NotFoundException, UnprocessableEntityException } from '../../common/errors';
 import { createNotification } from '../notifications/notification.service';
 
 const reference = generateUniqueReference()
@@ -281,4 +281,44 @@ export async function updateWalletBalance(userId: string, amount: number, betId?
     reference: reference
   });
   await transaction.save();
+}
+
+
+export async function getWalletBalance(userId: string): Promise<number> {
+  try {
+    let wallet = await Wallet.findOne({ userId });
+    
+    if (!wallet) {
+      wallet = await new Wallet({
+        userId: userId,
+        balance: 10000
+      }).save();
+    }
+    
+    return wallet.balance; 
+  } catch (error) {
+    throw new Error(`Error fetching wallet balance: ${error}`);
+  }
+}
+
+
+export async function subtractWalletBalance(userId: string, amount: number): Promise<IWallet> {
+  try {
+    const wallet = await Wallet.findOne({ userId });
+
+      if (!wallet) {
+        throw new NotFoundException('Wallet not found');
+      }
+
+      if (wallet.balance < amount) {
+        throw new UnprocessableEntityException('Insufficient balance');
+      }
+
+      wallet.balance -= amount;
+      await wallet.save();
+
+      return wallet;
+  } catch (error) {
+    throw new Error(`Error deducting wallet balance, ${error}`);
+  }
 }
