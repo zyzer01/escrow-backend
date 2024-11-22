@@ -3,7 +3,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import User, { IUser } from '../users/user.model';
 import dotenv from 'dotenv'
 import { sendEmail } from '../../mail/mail.service';
-import { calculateVerificationCodeExpiryTime, comparePasswords, generateOTP, generateTokens, generateVerificationCode, hashPassword } from '../../lib/utils/auth';
+import { calculateVerificationCodeExpiryTime, comparePasswords, generateOTP, generateTokens, generateVerificationCode, hashPassword, verifyRefreshToken } from '../../lib/utils/auth';
 import { StringConstants } from '../../common/strings';
 import Wallet from '../wallet/models/wallet.model';
 import { ConflictException, ForbiddenException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '../../common/errors';
@@ -11,7 +11,7 @@ import { validateLoginInput } from '../../lib/utils/validators';
 import { addContactToBrevo } from '../marketing/marketing.service';
 import { EmailNotVerifiedException } from '../../common/errors/EmailNotVerifiedException';
 import { createNotification } from '../notifications/notification.service';
-import { AuthResponse } from '../../lib/types/auth';
+import { LoginResponse, Tokens } from '../../lib/types/auth';
 import { Session } from './session/session.model';
 import { Request } from 'express';
 
@@ -88,7 +88,7 @@ export async function verifyEmail(code: number): Promise<void> {
   Complete Registration
 */
 
-export async function completeRegistration(request: Request, userData: IUser): Promise<AuthResponse> {
+export async function completeRegistration(userData: IUser): Promise<{tokens: Tokens, user: IUser}> {
   const user = await User.findOne({ email: userData.email, isEmailVerified: true });
 
   if (!user) {
@@ -123,34 +123,21 @@ export async function completeRegistration(request: Request, userData: IUser): P
 
   addContactToBrevo(savedUser.email, savedUser.firstName, savedUser.lastName);
 
-  const session = await Session.create({
-    userId: user.id,
-    userAgent: request.headers['user-agent'] || 'unknown',
-    ip: request.ip,
-    isValid: true,
+  // Create tokens immediately after registration
+  const tokens = generateTokens({ 
+    userId: user._id, 
+    role: user.role,
+    tokenVersion: user.tokenVersion 
   });
   
-  // Create tokens immediately after registration
-  const tokens = generateTokens({
-    userId: savedUser._id,
-    role: savedUser.role,
-    sessionId: session._id.toString(),
-  });
-
-  return { tokens, user: savedUser };
+  return { tokens, user };
 }
 
 /*
   Login User
 */
 
-interface LoginParams {
-  email: string;
-  password: string;
-  request: Request;
-}
-
-export async function loginUser({ email, password, request }: LoginParams): Promise<AuthResponse> {
+export async function loginUser(email: string, password: string): Promise<IUser> {
   const user = await User.findOne({ email });
   if (!user) {
     throw new NotFoundException(StringConstants.USER_NOT_FOUND);
@@ -165,36 +152,26 @@ export async function loginUser({ email, password, request }: LoginParams): Prom
     throw new ForbiddenException(StringConstants.INVALID_PASSWORD);
   }
 
-  // Create a session with a valid status
-  const session = await Session.create({
-    userId: user.id,
-    userAgent: request.headers['user-agent'] || 'unknown',
-    ip: request.ip,
-    isValid: true,
-  });
-
-  const tokens = generateTokens({
-    userId: user.id,
-    role: user.role,
-    sessionId: session._id.toString(),
-  });
-
-  return { tokens, user };
+  return user;
 }
 
-export async function checkAuthToken(token: string) {
-  try {
-    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET) as JwtPayload;
-    const user = await User.findById(decoded.userId);
-    
-    if (!user) {
-      throw new Error('User not found');
-    }
+/*
+  Refresh Tokens
+*/
 
-    return { userId: user.id, role: user.role };
-  } catch (error) {
-    throw new Error('Invalid or expired token');
+export async function refreshTokens(refreshToken: string): Promise<Tokens> {
+  const payload = verifyRefreshToken(refreshToken);
+  const user = await User.findById(payload.userId);
+  
+  if (!user || user.tokenVersion !== payload.tokenVersion) {
+    throw new Error('Invalid refresh token');
   }
+  
+  return generateTokens({ 
+    userId: user._id, 
+    role: user.role,
+    tokenVersion: user.tokenVersion 
+  });
 }
 
 /*
@@ -374,4 +351,10 @@ export async function resendEmailVerificationCode(email: string): Promise<void> 
     template: 'resend-code',
     params: { code: newVerificationCode },
   });
+}
+
+
+export async function logout(userId: string): Promise<void> {
+  // Invalidate refresh token by incrementing token version
+  await User.findByIdAndUpdate(userId, { $inc: { tokenVersion: 1 } });
 }

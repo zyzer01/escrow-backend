@@ -13,7 +13,7 @@ export async function markAsReadHandler(req: Request, res: Response, next: NextF
 }
 
 export async function getUserNotificationsHandler(req: Request, res: Response, next: NextFunction) {
-  const userId = req.user?.userId;
+  const userId = req.user?.data.user.id;
   const isRead = req.query.isRead as string | undefined;
   const limit = parseInt(req.query.limit as string, 10);
 

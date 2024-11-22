@@ -3,7 +3,7 @@ import { acceptBetInvitation, cancelBet, createBet, deleteBet, engageBet, getBet
 import { StringConstants } from '../../common/strings';
 
 export async function createBetHandler(req: Request, res: Response, next: NextFunction) {
-    const userId = req.user?.userId;
+    const userId = req.user?.data.user.id;
     const { designatedWitnesses, ...betData } = req.body;
     try {
         const bet = await createBet(userId!, betData, designatedWitnesses);
@@ -13,7 +13,7 @@ export async function createBetHandler(req: Request, res: Response, next: NextFu
     }
 }
 export async function getBetsHandler(req: Request, res: Response, next: NextFunction) {
-    const userId = req.user?.userId;
+    const userId = req.user?.data.user.id;
     try {
         if (!userId) {
             return res.status(401).json({ message: StringConstants.UNAUTHORIZED });
@@ -27,7 +27,7 @@ export async function getBetsHandler(req: Request, res: Response, next: NextFunc
 }
 
 export async function getBetHandler(req: Request, res: Response) {
-  const userId = req.user?.userId;
+  const userId = req.user?.data.user.id;
   const { betId } = req.params;
   
     try {
@@ -86,7 +86,7 @@ export async function rejectBetInvitationHandler(req: Request, res: Response, ne
 }
 
 export async function getBetInvitationHandler(req: Request, res: Response, next: NextFunction) {
-    const userId = req.user?.userId;
+    const userId = req.user?.data.user.id;
     const { invitationId } = req.params;
   
     try {

@@ -17,8 +17,7 @@ export async function getAllUsersHandler(req: Request, res: Response, next: Next
 
 export async function getUserHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user?.userId;
-    // console.log(userId);
+    const userId = req.user?.data.user.id;
     const fields = req.query.fields as string | undefined;
 
     const user = await getUser(userId, fields)
@@ -33,7 +32,7 @@ export async function getUserHandler(req: Request, res: Response, next: NextFunc
 
 
 export async function searchUsersHandler(req: Request, res: Response, next: NextFunction) {
-  // const userId = req.user?.userId;
+  // const userId = req.user?.data.user.id;
   const { username } = req.query as { username: string };
 
   if (!username || typeof username !== 'string') {

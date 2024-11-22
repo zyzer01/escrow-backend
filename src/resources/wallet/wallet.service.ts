@@ -10,6 +10,10 @@ import { createNotification } from '../notifications/notification.service';
 
 const reference = generateUniqueReference()
 
+const headers = {
+  Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+};
+
 export async function payoutFunds(userId: string, amount: number, betId: string): Promise<void> {
   try {
     let userWallet = await Wallet.findOne({ userId });

@@ -24,6 +24,7 @@ export interface IUser extends Document {
   changeEmailTokenExpiry: Date | null; 
   isEligibleForNeutralWitness: boolean;
   registrationComplete: boolean;
+  tokenVersion: number;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -49,6 +50,7 @@ const UserSchema = new Schema<IUser>({
   changeEmailTokenExpiry: { type: Date },
   isEligibleForNeutralWitness: { type: Boolean, default: false },
   registrationComplete: { type: Boolean, default: false },
+  tokenVersion: {type: Number, default: 0},
 }, { timestamps: true });
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

@@ -1,19 +1,19 @@
 import { JwtPayload } from "jsonwebtoken";
 import { IUser } from "../../resources/users/user.model";
 
-export interface TokenPayload extends JwtPayload {
-    userId: string;
-    role: string;
-    sessionId: string;
+export interface TokenPayload {
+  userId: string;
+  role?: string;
+  tokenVersion?: number;
 }
 
-export interface TokenPair {
-    accessToken: string;
-    refreshToken: string;
+export interface Tokens {
+  accessToken: string;
+  refreshToken: string;
 }
 
-export interface AuthResponse {
-    tokens: TokenPair;
+export interface LoginResponse {
+    tokens: Tokens;
     user: IUser;
 }
 

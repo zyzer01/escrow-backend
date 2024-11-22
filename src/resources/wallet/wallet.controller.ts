@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { getWalletBalance, paystackCallback, subtractWalletBalance, updateWalletBalance, verifyAccountNumber } from "./wallet.service";
+import { getWalletBalance, paystackCallback, subtractWalletBalance, updateWalletBalance, validateBVN, verifyAccountNumber } from "./wallet.service";
 import { fundWallet, withdrawFromWallet } from './wallet.service';
 import { StringConstants } from "../../common/strings";
 
@@ -60,7 +60,7 @@ export async function updateWalletBalanceHandler(req: Request, res: Response, ne
 
 export async function getWalletBalanceHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.data.user.id;
         
         if (!userId) {
             res.status(401).json({ error: 'User not authenticated' });
@@ -76,7 +76,7 @@ export async function getWalletBalanceHandler(req: Request, res: Response, next:
 
 export async function subtractWalletBalanceHandler(req: Request, res: Response, next: NextFunction) {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.data.user.id;
         const { amount } = req.body;
 
         if (typeof amount !== 'number' || amount <= 0) {
