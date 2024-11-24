@@ -5,33 +5,36 @@ import User from '../users/user.model';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
 import { NotFoundException } from '../../common/errors';
 
-export async function verifyAccountNumber(accountNumber: string, bankCode: string): Promise<any> {
-  try {
-    const response = await axios.get(`${PAYSTACK_BASE_URL}/bank/resolve`, {
-      params: {
-        account_number: accountNumber,
-        bank_code: bankCode,
-      },
-      headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-      },
-    });
 
-    return response.data.data;
-  } catch (error) {
-    console.error('Error verifying account number:', error);
-    throw new Error(StringConstants.BANK_ACCOUNT_VERIFICATION_FAILED);
+export class BankAccountService {
+
+  public async verifyAccountNumber(accountNumber: string, bankCode: string): Promise<any> {
+    try {
+      const response = await axios.get(`${PAYSTACK_BASE_URL}/bank/resolve`, {
+        params: {
+          account_number: accountNumber,
+          bank_code: bankCode,
+        },
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        },
+      });
+
+      return response.data.data;
+    } catch (error) {
+      console.error('Error verifying account number:', error);
+      throw new Error(StringConstants.BANK_ACCOUNT_VERIFICATION_FAILED);
+    }
   }
-}
 
-export async function fetchAvailableBanks(): Promise<any> {
+  public async fetchAvailableBanks(): Promise<any> {
     try {
       const response = await axios.get(`${PAYSTACK_BASE_URL}/bank`, {
         headers: {
           Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
         }
       });
-  
+
       return response.data.data;
     } catch (error) {
       console.error('Error fetching available banks:', error);
@@ -39,53 +42,57 @@ export async function fetchAvailableBanks(): Promise<any> {
     }
   }
 
-export async function saveBankAccount(userId: string, bankCode: string, accountNumber: string): Promise<IBankAccount> {
-  const verifiedAccount = await verifyAccountNumber(accountNumber, bankCode);
+  public async saveBankAccount(userId: string, bankCode: string, accountNumber: string): Promise<IBankAccount> {
+    const verifiedAccount = await this.verifyAccountNumber(accountNumber, bankCode);
 
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new NotFoundException(StringConstants.USER_NOT_FOUND);
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new NotFoundException(StringConstants.USER_NOT_FOUND);
+    }
+
+    const bankAccount = new BankAccount({
+      userId,
+      bankName: verifiedAccount.bank_name,
+      bankCode,
+      accountNumber,
+      accountName: verifiedAccount.account_name,
+      isPrimary: false,
+    });
+
+    await bankAccount.save();
+    return bankAccount;
   }
 
-  const bankAccount = new BankAccount({
-    userId,
-    bankName: verifiedAccount.bank_name,
-    bankCode,
-    accountNumber,
-    accountName: verifiedAccount.account_name,
-    isPrimary: false,
-  });
-
-  await bankAccount.save();
-  return bankAccount;
-}
-
-export async function getUserBankAccounts(userId: string): Promise<IBankAccount[]> {
-  const bankAccounts = await BankAccount.find({ userId }).sort({ isPrimary: -1 });
-  return bankAccounts;
-}
-
-export async function setPrimaryBankAccount(userId: string, bankAccountId: string): Promise<IBankAccount> {
-  // Unset the current primary account
-  await BankAccount.updateMany({ userId, isPrimary: true }, { $set: { isPrimary: false } });
-
-  // Set the new primary account
-  const bankAccount = await BankAccount.findByIdAndUpdate(bankAccountId, { $set: { isPrimary: true } }, { new: true });
-
-  if (!bankAccount) {
-    throw new NotFoundException(StringConstants.BANK_ACCOUNT_NOT_FOUND);
+  public async getUserBankAccounts(userId: string): Promise<IBankAccount[]> {
+    const bankAccounts = await BankAccount.find({ userId }).sort({ isPrimary: -1 });
+    return bankAccounts;
   }
 
-  return bankAccount;
-}
+  public async setPrimaryBankAccount(userId: string, bankAccountId: string): Promise<IBankAccount> {
+    // Unset the current primary account
+    await BankAccount.updateMany({ userId, isPrimary: true }, { $set: { isPrimary: false } });
+
+    // Set the new primary account
+    const bankAccount = await BankAccount.findByIdAndUpdate(bankAccountId, { $set: { isPrimary: true } }, { new: true });
+
+    if (!bankAccount) {
+      throw new NotFoundException(StringConstants.BANK_ACCOUNT_NOT_FOUND);
+    }
+
+    return bankAccount;
+  }
 
 
-export async function deleteBankAccount(userId: string, bankAccountId: string): Promise<void> {
+  public async deleteBankAccount(userId: string, bankAccountId: string): Promise<void> {
     const bankAccount = await BankAccount.findOneAndDelete({ _id: bankAccountId, userId });
 
     if (!bankAccount) {
-        throw new NotFoundException(StringConstants.BANK_ACCOUNT_NOT_FOUND);
+      throw new NotFoundException(StringConstants.BANK_ACCOUNT_NOT_FOUND);
     }
 
     return;
+  }
+
 }
+
+export const bankAccountService = new BankAccountService();

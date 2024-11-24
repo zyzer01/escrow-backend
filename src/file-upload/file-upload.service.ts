@@ -16,3 +16,6 @@ export class FileUploadService {
     return this.uploadProvider.deleteFile(publicId);
   }
 }
+
+
+export const fileUploadService = new FileUploadService();

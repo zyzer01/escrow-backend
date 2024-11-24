@@ -78,6 +78,7 @@ export enum StringConstants {
   PASSWORD_RESET_SUCCESSFUL = "Password has been reset successfully.",
   PASSWORD_RESET_LINK_SENT = "Password reset link sent successfully",
   PASSWORD_ALREADY_USED = "Password already used, Kindly enter a new password",
+  PASSWORD_CHANGED_SUCCESS = "Password Changed Successfully",
   REGISTRATION_ERROR = "An error occurred during registration",
   SIGNUP_SUCCESSFUL = "Sign up was successful, welcome.",
   TRANSACTION_PROCESSED = "Transaction has already been processed",
@@ -86,6 +87,6 @@ export enum StringConstants {
   WALLET_NOT_FOUND = "Wallet not found",
   WITNESS_NOT_FOUND = "Witness not found",
   WITNESS_DOES_NOT_EXIST = "One or more witness IDs do not match any user ID in the database",
-  WITNESS_INVITE_REJECTED = "Witness is not eligible to vote or has already rejected invite"
+  WITNESS_INVITE_REJECTED = "Witness is not eligible to vote or has already rejected invite",
 }
 

@@ -1,58 +1,61 @@
+import { betService } from './bet.service';
 import { NextFunction, Request, Response } from "express";
-import { acceptBetInvitation, cancelBet, createBet, deleteBet, engageBet, getBet, getBetInvitation, getBets, rejectBetInvitation, settleBet, updateBet } from "./bet.service"
 import { StringConstants } from '../../common/strings';
 
-export async function createBetHandler(req: Request, res: Response, next: NextFunction) {
+
+export class BetController {
+
+public async createBet(req: Request, res: Response, next: NextFunction) {
     const userId = req.user?.data.user.id;
     const { designatedWitnesses, ...betData } = req.body;
     try {
-        const bet = await createBet(userId!, betData, designatedWitnesses);
+        const bet = await betService.createBet(userId!, betData, designatedWitnesses);
         res.status(201).json(bet);
     } catch (error) {
         next(error)
     }
 }
-export async function getBetsHandler(req: Request, res: Response, next: NextFunction) {
+public async getBets(req: Request, res: Response, next: NextFunction) {
     const userId = req.user?.data.user.id;
     try {
         if (!userId) {
             return res.status(401).json({ message: StringConstants.UNAUTHORIZED });
         }
 
-        const bets = await getBets(userId);
+        const bets = await betService.getBets(userId);
         res.status(200).json(bets);
     } catch (error) {
         next(new Error(StringConstants.FAILED_BET_FETCH));
     }
 }
 
-export async function getBetHandler(req: Request, res: Response) {
+public async getBet(req: Request, res: Response) {
   const userId = req.user?.data.user.id;
   const { betId } = req.params;
   
     try {
-      const bet = await getBet(userId, betId);
+      const bet = await betService.getBet(userId, betId);
       res.status(200).json(bet);
     } catch (error) {
       res.status(500).json('Failed')
     }
   }
 
-export async function updateBetHandler(req: Request, res: Response, next: NextFunction) {
+public async updateBet(req: Request, res: Response, next: NextFunction) {
     const userData = req.body
     const { id } = req.params
     try {
-        const bet = await updateBet(id, userData);
+        const bet = await betService.updateBet(id, userData);
         res.status(200).json(bet)
     } catch (error) {
         next(error)
     }
 }
 
-export async function deleteBetHandler(req: Request, res: Response, next: NextFunction) {
+public async deleteBet(req: Request, res: Response, next: NextFunction) {
     const { id } = req.params;
     try {
-        const bet = await deleteBet(id);
+        const bet = await betService.deleteBet(id);
 
         if (!bet) {
             return res.status(404).json({ error: StringConstants.BET_NOT_FOUND });
@@ -64,10 +67,10 @@ export async function deleteBetHandler(req: Request, res: Response, next: NextFu
 }
 
 
-export async function acceptBetInvitationHandler(req: Request, res: Response, next: NextFunction) {
+public async acceptBetInvitation(req: Request, res: Response, next: NextFunction) {
     const { invitationId, opponentStake, opponentPrediction } = req.body
     try {
-        const invitation = await acceptBetInvitation(invitationId, opponentStake, opponentPrediction)
+        const invitation = await betService.acceptBetInvitation(invitationId, opponentStake, opponentPrediction)
 
         return res.status(200).json(invitation)
     } catch (error) {
@@ -75,32 +78,32 @@ export async function acceptBetInvitationHandler(req: Request, res: Response, ne
     }
 }
 
-export async function rejectBetInvitationHandler(req: Request, res: Response, next: NextFunction) {
+public async rejectBetInvitation(req: Request, res: Response, next: NextFunction) {
     const { invitationId } = req.params;
     try {
-        const invitation = await rejectBetInvitation(invitationId)
+        const invitation = await betService.rejectBetInvitation(invitationId)
         return res.status(200).json(invitation)
     } catch (error) {
         next(error)
     }
 }
 
-export async function getBetInvitationHandler(req: Request, res: Response, next: NextFunction) {
+public async getBetInvitation(req: Request, res: Response, next: NextFunction) {
     const userId = req.user?.data.user.id;
     const { invitationId } = req.params;
   
     try {
-      const invitation = await getBetInvitation(userId, invitationId);
+      const invitation = await betService.getBetInvitation(userId, invitationId);
       res.status(200).json(invitation);
     } catch (error) {
       next(error);
     }
   }
 
-export async function engageBetHandler(req: Request, res: Response, next: NextFunction) {
+public async engageBet(req: Request, res: Response, next: NextFunction) {
     const { betId } = req.params;
     try {
-        const bet = await engageBet(betId);
+        const bet = await betService.engageBet(betId);
 
         return res.status(200).json(bet);
     } catch (error) {
@@ -108,10 +111,10 @@ export async function engageBetHandler(req: Request, res: Response, next: NextFu
     }
 }
 
-export async function settleBetHandler(req: Request, res: Response, next: NextFunction) {
+public async settleBet(req: Request, res: Response, next: NextFunction) {
     const { id, winnerId } = req.body;
     try {
-        const bet = await settleBet(id, winnerId);
+        const bet = await betService.settleBet(id, winnerId);
 
         return res.status(200).json(bet);
     } catch (error) {
@@ -120,11 +123,11 @@ export async function settleBetHandler(req: Request, res: Response, next: NextFu
 }
 
 
-export async function cancelBetHandler(req: Request, res: Response, next: NextFunction) {
+public async cancelBet(req: Request, res: Response, next: NextFunction) {
     const { id } = req.params;
 
     try {
-        const bet = await cancelBet(id)
+        const bet = await betService.cancelBet(id)
         res.status(200).json(bet);
     } catch (error) {
         console.error(error)
@@ -132,3 +135,6 @@ export async function cancelBetHandler(req: Request, res: Response, next: NextFu
     }
 };
 
+}
+
+export const betController = new BetController();
