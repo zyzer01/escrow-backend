@@ -12,7 +12,6 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   try {
     const payload = verifyAccessToken(session) as TokenPayload;
     req.user = payload;
-    console.log(req.user);
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid access token' });

@@ -14,7 +14,12 @@ import { sendEmail } from '../../mail/mail.service';
 import Escrow from '../escrow/escrow.model';
 import { UnauthorizedException } from '../../common/errors';
 import { notificationService } from './../notifications/notification.service';
+import { subtractWalletBalance } from '../wallet/wallet.service';
+import { PaginatedResponse } from '../../lib/types';
+import BetHistory, { IBetHistory } from './models/bet-history.model';
 
+export const OPEN_STATUSES = ["pending", "accepted", "active", "verified"] as const;
+export const HISTORY_STATUSES = ["closed", "canceled", "settled"] as const;
 
 export class BetService {
 
@@ -49,6 +54,8 @@ export class BetService {
             neutralWitnessId = neutralWitness._id;
             designatedWitnesses.push(neutralWitnessId);
         }
+
+        await subtractWalletBalance(userId, betData.creatorStake)
 
         const bet = new Bet({
             ...betData,
@@ -132,7 +139,11 @@ export class BetService {
      * @param betId - The ID of the bet to accept.
      */
 
-    public async acceptBetInvitation(invitationId: string, opponentStake: number, opponentPrediction: string): Promise<IBet | null> {
+    public async acceptBetInvitation(userId: string, invitationId: string, opponentStake: number, opponentPrediction: string): Promise<IBet | null> {
+
+        if (!userId) {
+            throw new UnauthorizedException(StringConstants.UNAUTHORIZED)
+        }
 
         const invitation = await BetInvitation.findById(invitationId).populate('betId').populate({
             path: 'creatorId',
@@ -148,15 +159,20 @@ export class BetService {
             throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
         }
 
+
         const bet = invitation.betId;
         if (!bet) {
             throw new NotFoundException('Bet associated with the invitation not found');
         }
 
+        await subtractWalletBalance(userId, opponentStake)
+
         bet.opponentStake = opponentStake;
         bet.predictions.opponentPrediction = opponentPrediction;
         bet.status = "accepted";
         bet.totalStake = opponentStake + bet.creatorStake
+
+
         await bet.save();
 
         invitation.status = 'accepted';
@@ -173,7 +189,9 @@ export class BetService {
             status: 'locked'
         });
 
-        await notificationService.createNotification([bet.creatorId], "bet-invite", "Bet Accepted", `Your bet "${bet.title}" has been accepted`, bet._id);
+        const betLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}`;
+
+        await notificationService.createNotification([bet.creatorId], "bet-invite", "Bet Accepted", `Your bet "${bet.title}" has been accepted`, betLink, bet._id);
 
         await sendEmail({
             to: user.email,
@@ -354,6 +372,8 @@ export class BetService {
             bet._id
         );
 
+        await this.pushBetToHistory(bet);
+
         return bet;
     }
 
@@ -419,69 +439,120 @@ export class BetService {
      * @param userId - The ID of the user to retrieve bet history for.
      * @returns - An array of bets the user has participated in.
      */
-    public async getBetHistory(userId: Types.ObjectId): Promise<IBet[]> {
-        const bets = await Bet.find({
+    public async getBetsHistory(
+        userId: string, 
+        page: number = 1,
+        limit: number = 10,
+        filters: {
+            status?: string;
+            betType?: string;
+            deadline?: Date;
+        } = {}): Promise<PaginatedResponse<IBetHistory[]>> {
+
+        if (!userId) {
+            throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
+        }
+
+        const skip = (page - 1) * limit;
+
+        // Build the query based on filters
+        const query: any = {
             $or: [
                 { creatorId: userId },
                 { opponentId: userId },
                 { witnesses: userId }
             ],
-            status: { $in: ['closed', 'canceled', 'settled'] }
-        }).sort({ createdAt: -1 });
+        };
 
-        return bets;
+        if (filters.status) {
+            query.status = filters.status;
+        }
+
+        if (filters.betType) {
+            query.betType = filters.betType;
+        }
+
+        if (filters.deadline) {
+            query.deadline = {
+                $gte: new Date(filters.deadline),
+                $lt: new Date(new Date(filters.deadline).setDate(new Date(filters.deadline).getDate() + 1))
+            };
+        }
+
+        const [bets, total] = await Promise.all([
+            BetHistory.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit + 1),
+            BetHistory.countDocuments(query)
+        ]);
+
+        const hasMore = bets.length > limit;
+        const items = hasMore ? bets.slice(0, -1) : bets;
+
+        return {
+            items,
+            hasMore,
+            total
+        };
     }
 
-    public async getBets(userId: string): Promise<IBet[]> {
-        return Bet.find({
+    public async getBets(
+        userId: string,
+        page: number = 1,
+        limit: number = 10,
+        filters: {
+            status?: string;
+            betType?: string;
+            deadline?: Date;
+        } = {}
+    ): Promise<PaginatedResponse<IBet>> {
+        if (!userId) {
+            throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
+        }
+
+        const skip = (page - 1) * limit;
+
+        // Build the query based on filters
+        const query: any = {
             $or: [
                 { creatorId: userId },
-                { opponentId: userId, status: 'accepted' }
+                { opponentId: userId }
             ]
-        }).sort({ createdAt: -1 });
+        };
+
+        if (filters.status) {
+            query.status = filters.status;
+        }
+
+        if (filters.betType) {
+            query.betType = filters.betType;
+        }
+
+        if (filters.deadline) {
+            query.deadline = {
+                $gte: new Date(filters.deadline),
+                $lt: new Date(new Date(filters.deadline).setDate(new Date(filters.deadline).getDate() + 1))
+            };
+        }
+
+        const [bets, total] = await Promise.all([
+            Bet.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit + 1),
+            Bet.countDocuments(query)
+        ]);
+
+        const hasMore = bets.length > limit;
+        const items = hasMore ? bets.slice(0, -1) : bets;
+
+        return {
+            items,
+            hasMore,
+            total
+        };
     }
-
-    // public async getBets({
-    //     userId,
-    //     query = '',
-    //     page = 1,
-    //     limit = 10,
-    //     sortBy = 'createdAt',
-    //     sortOrder = 'desc',
-    //     status,
-    //     betType,
-    //     deadline,
-    //   }: BetQueryParams & { userId: string }): Promise<{ bets: IBet[], total: number }> {
-    //     const skip = (page - 1) * limit;
-
-    //     let queryObj: any = {
-    //       $or: [
-    //         { creatorId: userId },
-    //         { opponentId: userId, status: 'accepted' }
-    //       ]
-    //     };
-
-    //     if (query) {
-    //       queryObj.$and = [{
-    //         $or: [
-    //           { title: { $regex: query, $options: 'i' } },
-    //           { description: { $regex: query, $options: 'i' } }
-    //         ]
-    //       }];
-    //     }
-
-    //     if (status) queryObj.status = status;
-    //     if (betType) queryObj.betType = betType;
-    //     if (deadline) queryObj.deadline = { $lte: new Date(deadline) };
-
-    //     const total = await Bet.countDocuments(queryObj);
-    //     const bets = await Bet.find(queryObj)
-    //       .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
-    //       .skip(skip)
-    //       .limit(limit);
-
-    //     return { bets, total };
-    //   }
 
 
     public async getBet(userId: string, betId: string): Promise<IBet | null> {
@@ -504,6 +575,28 @@ export class BetService {
         return bet;
     }
 
+    private async pushBetToHistory(bet: IBet): Promise<IBetHistory> {
+        const betHistoryData = {
+            originalBetId: bet._id,
+            creatorId: bet.creatorId,
+            opponentId: bet.opponentId,
+            winnerId: bet.winnerId,
+            title: bet.title,
+            description: bet.description,
+            creatorStake: bet.creatorStake,
+            opponentStake: bet.opponentStake,
+            totalStake: bet.totalStake,
+            deadline: bet.deadline,
+            status: bet.status,
+            witnesses: bet.witnesses,
+            predictions: bet.predictions,
+            betType: bet.betType,
+        };
+
+        const betHistory = await BetHistory.create(betHistoryData);
+
+        return betHistory;
+    }
 
     public async deleteBet(id: string): Promise<IBet | null> {
         return Bet.findByIdAndDelete(id).exec();

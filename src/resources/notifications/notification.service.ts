@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import Notification, { INotification } from './notification.model';
+import { PaginatedResponse } from '../../lib/types';
 
 
 export class NotificationService {
@@ -30,16 +31,37 @@ export class NotificationService {
     return Notification.findByIdAndUpdate(notificationId, { isRead: true }, { new: true });
   }
 
-  public async getUserNotifications(userId: string, isRead?: boolean): Promise<INotification[]> {
+  public async getUserNotifications(
+    userId: string, 
+    page: number = 1,
+    limit: number = 10,
+    isRead?: boolean
+): Promise<PaginatedResponse<INotification>> {
     const query: Record<string, unknown> = { userId };
 
     if (typeof isRead !== 'undefined') {
-      query.isRead = isRead;
+        query.isRead = isRead;
     }
 
-    const notifications = await Notification.find(query).sort({ createdAt: -1 });
-    return notifications;
-  }
+    const skip = (page - 1) * limit;
+
+    const [notifications, total] = await Promise.all([
+        Notification.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit + 1),
+        Notification.countDocuments(query)
+    ]);
+
+    const hasMore = notifications.length > limit;
+    const items = hasMore ? notifications.slice(0, -1) : notifications;
+
+    return {
+        items,
+        hasMore,
+        total
+    };
+}
 
 }
 

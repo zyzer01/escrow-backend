@@ -316,22 +316,20 @@ class WalletService {
 
   public async subtractWalletBalance(userId: string, amount: number): Promise<IWallet> {
     try {
-      const wallet = await Wallet.findOne({ userId });
-
+      const wallet = await Wallet.findOneAndUpdate(
+        { userId, balance: { $gte: amount } },
+        { $inc: { balance: -amount } },      
+        { new: true }                       
+      );
+  
       if (!wallet) {
-        throw new NotFoundException('Wallet not found');
+        throw new UnprocessableEntityException('Insufficient balance or wallet not found');
       }
-
-      if (wallet.balance < amount) {
-        throw new UnprocessableEntityException('Insufficient balance');
-      }
-
-      wallet.balance -= amount;
-      await wallet.save();
-
+  
       return wallet;
     } catch (error) {
-      throw new Error(`Error deducting wallet balance, ${error}`);
+      console.error(error)
+      throw new Error(`Error deducting wallet balance: ${error}`);
     }
   }
 

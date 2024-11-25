@@ -9,18 +9,23 @@ import Witness from './witness.model';
 export class WitnessService {
 
 
-    public async getWitnessInvite(witnessId: string): Promise<Response> {
+    public async getWitnessInvite(witnessId: string) {
 
-        const witness = await Witness.findById(witnessId)
-            .populate({
-                path: 'betId'
-            });
+        try {
+            const witness = await Witness.findById(witnessId)
+                .populate({
+                    path: 'betId'
+                });
 
-        if (!witness) {
-            throw new Error('Witness invitation not found');
+            if (!witness) {
+                throw new Error('Witness invitation not found');
+            }
+
+            return witness;
+        } catch (error) {
+            console.error("Failed to get witness invite:", error);
         }
 
-        return witness;
     }
 
     /**
@@ -176,6 +181,24 @@ export class WitnessService {
         }
     }
 
+    public async getBetWitnesses(betId: string) {
+
+        try {
+            const witnesses = await Witness.find({
+                betId,
+            }).populate('userId', 'username firstName lastName') // Assuming `userId` is the correct reference field in the `Witness` schema.
+                .lean();
+
+            if (!witnesses) {
+                throw new Error(StringConstants.WITNESS_NOT_FOUND)
+            }
+
+            return witnesses;
+        } catch (error) {
+            throw new Error(`Failed to retrieve witnesses: ${error}`)
+        }
+
+    }
 
 }
 
@@ -183,5 +206,5 @@ export class WitnessService {
 export const witnessService = new WitnessService()
 export const {
     distributeWitnessCommission,
-    
+
 } = new WitnessService()

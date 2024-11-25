@@ -72,6 +72,19 @@ export class WitnessController {
         }
     }
 
+    public async getBetWitnesses(req: Request, res: Response, next: NextFunction) {
+        const userId = req.user?.data.user.id;
+        const { betId } = req.params;
+
+        try {
+            const witnesses = await witnessService.getBetWitnesses(betId);
+            console.log(witnesses);
+            res.status(200).json(witnesses);
+        } catch (error) {
+            next(error)
+        }
+    }
+
 }
 
 
