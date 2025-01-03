@@ -8,23 +8,17 @@ export interface IUser extends Document {
   lastName?: string;
   phone_number?: string;
   role: string;
+  banned?: boolean;
+  banReason?: string;
+  banExpires?: number;
   government_id_verified: boolean;
   reputation_score: number;
   bets_participated: number;
   bets_witnessed: number;
   is_active: boolean;
-  googleId?: string;
   profilePicture?: string;
   isEmailVerified: boolean;
-  emailVerificationCode: number | null;
-  emailVerificationCodeExpiry: Date | null;
-  resetPasswordToken: string | null;
-  resetPasswordTokenExpiry: Date | null;
-  changeEmailToken: string | null;
-  changeEmailTokenExpiry: Date | null; 
   isEligibleForNeutralWitness: boolean;
-  registrationComplete: boolean;
-  tokenVersion: number;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -35,22 +29,14 @@ const UserSchema = new Schema<IUser>({
   lastName: { type: String },
   phone_number: { type: String },
   role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' },
+  banned: { type: Boolean, default: false },
+  banReason: { type: String },
+  banExpires: { type: Number },
   reputation_score: { type: Number, default: 0 },
   bets_participated: { type: Number, default: 0, min: [0, 'Value cannot be less than 0'] },
   bets_witnessed: { type: Number, default: 0, min: [0, 'Value cannot be less than 0'] },
   is_active: { type: Boolean, default: true },
-  googleId: { type: String },
-  profilePicture: { type: String },
-  isEmailVerified: { type: Boolean, default: false },
-  emailVerificationCode: { type: Number },
-  emailVerificationCodeExpiry: { type: Date },
-  resetPasswordToken: { type: String },
-  resetPasswordTokenExpiry: { type: Date },
-  changeEmailToken: { type: String },
-  changeEmailTokenExpiry: { type: Date },
   isEligibleForNeutralWitness: { type: Boolean, default: false },
-  registrationComplete: { type: Boolean, default: false },
-  tokenVersion: {type: Number, default: 0},
-}, { timestamps: true });
+}, { timestamps: true, collection: 'user', });
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

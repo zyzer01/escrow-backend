@@ -21,7 +21,7 @@ export class UserController {
 
   public async getUsers(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.data.user.id;
+      const userId = req.user?.id;
 
       const users = await userService.getUser(userId)
       if (!users) {
@@ -36,7 +36,7 @@ export class UserController {
 
   public async getUser(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.data.user.id;
+      const userId = req.user?.id;
       const fields = req.query.fields as string | undefined;
 
       const user = await userService.getUser(userId, fields)
@@ -51,7 +51,7 @@ export class UserController {
 
 
   public async searchUsers(req: Request, res: Response, next: NextFunction) {
-    // const userId = req.user?.data.user.id;
+    // const userId = req.user?.id;
     const { username } = req.query as { username: string };
 
     if (!username || typeof username !== 'string') {

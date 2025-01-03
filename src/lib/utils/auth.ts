@@ -33,12 +33,39 @@ export function generateTokens(payload: TokenPayload): Tokens {
     return { accessToken, refreshToken };
   }
   
+  // export function verifyAccessToken(token: string): TokenPayload {
+  //   try {
+  //     return jwt.verify(token, ACCESS_TOKEN_SECRET) as TokenPayload;
+  //   } catch (error) {
+  //     throw new Error('Invalid access token');
+  //   }
+  // }
+
   export function verifyAccessToken(token: string): TokenPayload {
     try {
-      return jwt.verify(token, ACCESS_TOKEN_SECRET) as TokenPayload;
+      // First, URL decode the token if it's URL encoded
+      const decodedToken = decodeURIComponent(token);
+  
+      // Split the token if it contains multiple parts (some session implementations do this)
+      const [actualToken] = decodedToken.split('.');
+  
+      // Verify the token
+      const decoded = jwt.verify(
+        actualToken || decodedToken, // Use the split token if available, otherwise use the whole token
+        ACCESS_TOKEN_SECRET,
+        {
+          algorithms: ['HS256'], // Specify allowed algorithms
+          ignoreExpiration: false, // Ensure token expiration is checked
+        }
+      ) as TokenPayload;
+  
+      // Validate token structure
+      // validateTokenStructure(decoded);
+  
+      return decoded;
     } catch (error) {
-      throw new Error('Invalid access token');
-    }
+          throw new Error('Invalid access token');
+      }
   }
   
   export function verifyRefreshToken(token: string): TokenPayload {

@@ -6,7 +6,7 @@ import { StringConstants } from '../../common/strings';
 export class BetController {
 
     public async createBet(req: Request, res: Response, next: NextFunction) {
-        const userId = req.user?.data.user.id;
+        const userId = req.user?.id;
         const { designatedWitnesses, ...betData } = req.body;
         try {
             const bet = await betService.createBet(userId!, betData, designatedWitnesses);
@@ -16,7 +16,7 @@ export class BetController {
         }
     }
     public async getBets(req: Request, res: Response, next: NextFunction) {
-        const userId = req.user?.data.user.id;
+        const userId = req.user?.id;
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
         const {
@@ -38,7 +38,7 @@ export class BetController {
     }
 
     public async getBetsHistory(req: Request, res: Response, next: NextFunction) {
-        const userId = req.user?.data.user.id;
+        const userId = req.user?.id;
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
         const {
@@ -60,7 +60,7 @@ export class BetController {
     }
 
     public async getBet(req: Request, res: Response, next: NextFunction) {
-        const userId = req.user?.data.user.id;
+        const userId = req.user?.id;
         const { betId } = req.params;
 
         try {
@@ -71,6 +71,14 @@ export class BetController {
         }
     }
 
+    public async getAllBets(req: Request, res: Response, next: NextFunction) {
+        try {
+            const bets = await betService.getAllBets();
+            res.status(200).json(bets);
+        } catch (error) {
+            next(error)
+        }
+    }
     public async updateBet(req: Request, res: Response, next: NextFunction) {
         const userData = req.body
         const { id } = req.params
@@ -98,7 +106,7 @@ export class BetController {
 
 
     public async acceptBetInvitation(req: Request, res: Response, next: NextFunction) {
-        const userId = req.user?.data.user.id;
+        const userId = req.user?.id;
         const { invitationId, opponentStake, opponentPrediction } = req.body
         try {
             const invitation = await betService.acceptBetInvitation(userId, invitationId, opponentStake, opponentPrediction)
@@ -120,7 +128,7 @@ export class BetController {
     }
 
     public async getBetInvitation(req: Request, res: Response, next: NextFunction) {
-        const userId = req.user?.data.user.id;
+        const userId = req.user?.id;
         const { invitationId } = req.params;
 
         try {

@@ -43,7 +43,7 @@ export class BetDisputeController {
 
     public async getDisputes(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user?.data.user.id
+            const userId = req.user?.id;
             const disputes = await betDisputeService.getDisputes(userId)
             if (!disputes) {
                 return res.status(404).json({ error: StringConstants.DISPUTE_NOT_FOUND });
@@ -56,7 +56,7 @@ export class BetDisputeController {
 
     public async getDispute(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user?.data.user.id
+            const userId = req.user?.id;
             const disputes = await betDisputeService.getDispute(userId)
             if (!disputes) {
                 return res.status(404).json({ error: StringConstants.DISPUTE_NOT_FOUND });

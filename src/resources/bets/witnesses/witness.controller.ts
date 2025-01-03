@@ -73,7 +73,7 @@ export class WitnessController {
     }
 
     public async getBetWitnesses(req: Request, res: Response, next: NextFunction) {
-        const userId = req.user?.data.user.id;
+        const userId = req.user?.id;
         const { betId } = req.params;
 
         try {

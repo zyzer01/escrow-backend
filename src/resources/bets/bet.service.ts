@@ -17,6 +17,9 @@ import { notificationService } from './../notifications/notification.service';
 import { subtractWalletBalance } from '../wallet/wallet.service';
 import { PaginatedResponse } from '../../lib/types';
 import BetHistory, { IBetHistory } from './models/bet-history.model';
+import { Verification } from '../auth/verification/verification.model';
+import { Account } from '../auth/account/account.model';
+import { Session } from '../auth/session/session.model';
 
 export const OPEN_STATUSES = ["pending", "accepted", "active", "verified"] as const;
 export const HISTORY_STATUSES = ["closed", "canceled", "settled"] as const;
@@ -497,6 +500,72 @@ export class BetService {
         };
     }
 
+    public async getAllBets() {
+
+        // const newVerification = new Verification({
+        //     identifier: 'exampleIdentifier',
+        //     value: 'someValue',
+        //     expiresAt: new Date('2024-12-31T23:59:59'),
+        //   });
+          
+        //   newVerification.save()
+        //     .then((result) => {
+        //       console.log('Verification saved:', result);
+        //     })
+        //     .catch((error) => {
+        //       console.error('Error saving verification:', error);
+        //     });
+
+        // const newUser = new User({
+        //     name: "John Doe",
+        //     email: "john.doe@exampless.com",
+        //     password: "hashedpassword123", // Use a library like bcrypt to hash passwords
+        //     isVerified: true,
+        //   });
+          
+        //   newUser.save()
+        // .then((result) => {
+        // console.log('Account saved:', result);
+        // })
+        // .catch((error) => {
+        //     console.error('Error saving account:', error);
+        // });
+
+            //     const newSession = new Session({
+            //         userId: "6773f6c1b139a14e86ee95d3", // Replace with actual user ID
+            //         token: "secureRandomToken12345", // Generate a secure token
+            //         expiresAt: new Date(Date.now() + 60 * 60 * 1000), // Set expiration 1 hour from now
+            //         ipAddress: "192.168.1.1", // Replace with actual IP address
+            //         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36", // Replace with actual user agent
+            //         impersonatedBy: null, // If this session was created by another user, replace with their user ID
+            //       });
+            //   newSession.save()
+            //     .then((result) => {
+            //       console.log('Account saved:', result);
+            //     })
+            //     .catch((error) => {
+            //       console.error('Error saving account:', error);
+            //     });
+
+            // const newAccount = new Account({
+            //     userId: "6773f6c1b139a14e86ee95d3",
+            //     accountId: 'someAccountId',
+            //     providerId: 'someProviderId',
+            //     accessToken: 'accessTokenHere',
+            //     refreshToken: 'refreshTokenHere',
+            //   });
+              
+            //   newAccount.save()
+            //     .then((result) => {
+            //       console.log('Account saved:', result);
+            //     })
+            //     .catch((error) => {
+            //       console.error('Error saving account:', error);
+            //     });
+
+        return Bet.find()
+    }
+
     public async getBets(
         userId: string,
         page: number = 1,
@@ -505,6 +574,7 @@ export class BetService {
             status?: string;
             betType?: string;
             deadline?: Date;
+            q?: string;
         } = {}
     ): Promise<PaginatedResponse<IBet>> {
         if (!userId) {
@@ -534,6 +604,15 @@ export class BetService {
                 $gte: new Date(filters.deadline),
                 $lt: new Date(new Date(filters.deadline).setDate(new Date(filters.deadline).getDate() + 1))
             };
+        }
+
+        if (filters.q) {
+            query.$and.push({
+                $or: [
+                    { title: { $regex: filters.q, $options: 'i' } },
+                    { description: { $regex: filters.q, $options: 'i' } }
+                ]
+            });
         }
 
         const [bets, total] = await Promise.all([

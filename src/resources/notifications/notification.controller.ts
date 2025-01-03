@@ -16,7 +16,7 @@ export class NotificationController {
   }
 
   public async getUserNotifications(req: Request, res: Response, next: NextFunction) {
-    const userId = req.user?.data.user.id;
+    const userId = req.user?.id;
     const isRead = req.query.isRead as string | undefined;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;

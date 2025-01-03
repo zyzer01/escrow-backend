@@ -1,29 +1,46 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../utils/auth';
-import { TokenPayload } from '../types/auth';
+import { auth } from '../auth';
+import { fromNodeHeaders } from 'better-auth/node';
+import { UnauthorizedException } from '../../common/errors';
 
-export function authenticateToken(req: Request, res: Response, next: NextFunction) {
-  const session = req.cookies.session;
-  
-  if (!session) {
-    return res.status(401).json({ error: 'Token required' });
-  }
-  
+export async function authenticateToken(req: Request, res: Response, next: NextFunction) {
   try {
-    const payload = verifyAccessToken(session) as TokenPayload;
-    req.user = payload;
+    const session = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+    });
+
+    if (!session?.user) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    req.user = {
+      session: session.session,
+      id: session.user.id,
+      role: session.user.role,
+      email: session.user.email
+    };
+
+    console.log(req.user)
+
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Invalid access token' });
+    next(error);
   }
 }
 
 export function authorizeRole(...allowedRoles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const userRole = req.user.role;
-    if (!allowedRoles.includes(userRole)) {
-      return res.status(403).json({ error: 'Forbidden' });
+    if (!req.user) {
+      return next(new UnauthorizedException('Unauthorized'));
+    }
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Forbidden: Insufficient permission' });
     }
     next();
   };
 }
+
+
+// const session = cookies.split(';').find((cookie: string) => {
+//   return cookie.trim().startsWith('session_token=');
+// }).split('=')[1];

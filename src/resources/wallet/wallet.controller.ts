@@ -63,7 +63,7 @@ export class WalletController {
 
     public async getWalletBalance(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const userId = req.user?.data.user.id;
+            const userId = req.user?.id;
             
             if (!userId) {
                 res.status(401).json({ error: 'User not authenticated' });
@@ -79,7 +79,7 @@ export class WalletController {
 
     public async subtractWalletBalance(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user?.data.user.id;
+            const userId = req.user?.id;
             const { amount } = req.body;
     
             if (typeof amount !== 'number' || amount <= 0) {

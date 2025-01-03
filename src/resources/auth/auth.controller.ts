@@ -2,6 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { StringConstants } from '../../common/strings';
 import { authService } from './auth.service';
 import { IUser } from '../users/user.model';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../../lib/auth';
 
 export class AuthController {
 
@@ -109,12 +111,24 @@ export class AuthController {
     }
   }
 
+  public async userSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const session = await auth.api.getSession({
+        headers: fromNodeHeaders(req.headers),
+      });
+      
+      res.json(session)
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Handle user logout
    */
   public async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user?.data.user.id;
+      const userId = req.user?.id;
       await authService.logout(userId);
       
       res.clearCookie('session');

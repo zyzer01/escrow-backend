@@ -1,5 +1,5 @@
 import { betController } from './resources/bets/bet.controller';
-import { Express } from "express";
+import { Application } from "express";
 import { userController } from "./resources/users/user.controller";
 import { authenticateToken, authorizeRole } from "./lib/middleware/auth";
 import { witnessController } from "./resources/bets/witnesses/witness.controller";
@@ -18,7 +18,7 @@ import { bankAccountController } from './resources/bank-account/bank-account.con
 import { fileUploadController } from './file-upload/file-upload.controller';
 
 
-function routes(app: Express) {
+function routes(app: Application) {
   app.get('/v1/users/admin', authenticateToken, authorizeRole('admin'), userController.getAllUsers)
   app.get('/v1/users', userController.getUsers)
   app.get('/v1/users/:id', authenticateToken, userController.getUser)
@@ -34,12 +34,14 @@ function routes(app: Express) {
   app.post('/v1/auth/resend-email-verificationCode', emailVerificationLimiter, authController.resendEmailVerificationCode)
   app.post('/v1/auth/forgot-password', forgotPasswordLimiter, authController.forgotPassword)
   app.post('/v1/auth/reset-password', authController.resetPassword)
+  app.get('/v1/auth/session', authController.userSession)
   app.post('/v1/auth/refresh', authController.refreshTokens)
   app.post('/v1/auth/logout', authController.logout)
   app.get('/v1/auth/google', googleHandler)
   app.get('/v1/auth/google/callback', googleCallbackHandler)
 
   app.post('/v1/bets', authenticateToken, betController.createBet)
+  app.get('/v1/bets/all', betController.getAllBets)
   app.get('/v1/bets', authenticateToken, betController.getBets)
   app.get('/v1/bets-history', authenticateToken, betController.getBetsHistory)
   app.get('/v1/bets/:betId', authenticateToken, betController.getBet)

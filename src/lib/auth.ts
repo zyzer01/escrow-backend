@@ -1,0 +1,56 @@
+import { admin } from 'better-auth/plugins';
+import { betterAuth } from "better-auth";
+import { MongoClient } from "mongodb";
+import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { sendEmail } from "../mail/mail.service";
+import { userMetadata } from './plugins';
+
+const client = new MongoClient(process.env.MONGODB_URI as string);
+const db = client.db()
+
+client.connect()
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("Failed to connect to MongoDB:", err));
+
+export const auth = betterAuth({
+  appName: "Escrowbet",
+  trustedOrigins: ["http://localhost:3000"],
+  database: mongodbAdapter(db),
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    sendResetPassword: async ({user, url, token}, request) => {
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your password",
+        template: "forgot-password",
+        params: { link: url },
+      });
+    },
+  },
+  callbackURL: "http://localhost:3000",
+  emailVerification: {
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url, token }, request) => {
+      await sendEmail({
+        to: user.email,
+        subject: "Verify your email address",
+        template: "confirm-email",
+        params: { link: url },
+      });
+    },
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
+  plugins: [
+    admin(),
+    userMetadata()
+  ],
+  advanced: {
+    cookiePrefix: "_Secure_eb"
+}
+});
