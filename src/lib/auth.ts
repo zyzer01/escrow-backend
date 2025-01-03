@@ -40,6 +40,19 @@ export const auth = betterAuth({
       });
     },
   },
+  user: {
+    changeEmail: {
+        enabled: true,
+        sendChangeEmailVerification: async ({ user, newEmail, url, token }, request) => {
+            await sendEmail({
+                to: newEmail,
+                subject: 'Verify your email change',
+                template: 'email-change-request',
+                params: { link: url },
+            })
+        }
+    }  
+},
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,

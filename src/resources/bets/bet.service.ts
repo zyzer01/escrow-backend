@@ -547,21 +547,21 @@ export class BetService {
             //       console.error('Error saving account:', error);
             //     });
 
-            // const newAccount = new Account({
-            //     userId: "6773f6c1b139a14e86ee95d3",
-            //     accountId: 'someAccountId',
-            //     providerId: 'someProviderId',
-            //     accessToken: 'accessTokenHere',
-            //     refreshToken: 'refreshTokenHere',
-            //   });
+            const newAccount = new Account({
+                userId: "6773f6c1b139a14e86ee95d3",
+                accountId: 'someAccountId',
+                providerId: 'someProviderId',
+                accessToken: 'accessTokenHere',
+                refreshToken: 'refreshTokenHere',
+              });
               
-            //   newAccount.save()
-            //     .then((result) => {
-            //       console.log('Account saved:', result);
-            //     })
-            //     .catch((error) => {
-            //       console.error('Error saving account:', error);
-            //     });
+              newAccount.save()
+                .then((result) => {
+                  console.log('Account saved:', result);
+                })
+                .catch((error) => {
+                  console.error('Error saving account:', error);
+                });
 
         return Bet.find()
     }
