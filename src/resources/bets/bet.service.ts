@@ -15,7 +15,7 @@ import Escrow from '../escrow/escrow.model';
 import { UnauthorizedException } from '../../common/errors';
 import { notificationService } from './../notifications/notification.service';
 import { subtractWalletBalance } from '../wallet/wallet.service';
-import { PaginatedResponse } from '../../lib/types';
+import { BetPaginatedResponse } from '../../lib/types/bet';
 import BetHistory, { IBetHistory } from './models/bet-history.model';
 import { Verification } from '../auth/verification/verification.model';
 import { Account } from '../auth/account/account.model';
@@ -450,7 +450,7 @@ export class BetService {
             status?: string;
             betType?: string;
             deadline?: Date;
-        } = {}): Promise<PaginatedResponse<IBetHistory[]>> {
+        } = {}): Promise<BetPaginatedResponse<IBetHistory[]>> {
 
         if (!userId) {
             throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
@@ -547,21 +547,27 @@ export class BetService {
             //       console.error('Error saving account:', error);
             //     });
 
-            const newAccount = new Account({
-                userId: "6773f6c1b139a14e86ee95d3",
-                accountId: 'someAccountId',
-                providerId: 'someProviderId',
-                accessToken: 'accessTokenHere',
-                refreshToken: 'refreshTokenHere',
-              });
+            // const newUser = new User({
+            //     username: "john_doe", // Unique and must be at least 3 characters
+            //     name: "John Doe", // Required
+            //     email: "johndoe@example.com", // Required, unique, and must be a valid email format
+            //     emailVerified: false, // Default is false
+            //     image: "https://example.com/avatar.jpg", // Optional profile image
+            //     role: "user", // Default role is 'user'
+            //     banned: false, // Default is false
+            //     banReason: null, // Only set if the user is banned
+            //     banExpires: null, // Only set if the user is banned temporarily
+            //   });
               
-              newAccount.save()
-                .then((result) => {
-                  console.log('Account saved:', result);
-                })
-                .catch((error) => {
-                  console.error('Error saving account:', error);
-                });
+            //   // Save the user to the database
+            //   newUser.save()
+            //     .then((result) => {
+            //       console.log('User saved:', result);
+            //     })
+            //     .catch((error) => {
+            //       console.error('Error saving user:', error);
+            //     });
+              
 
         return Bet.find()
     }
@@ -576,7 +582,7 @@ export class BetService {
             deadline?: Date;
             q?: string;
         } = {}
-    ): Promise<PaginatedResponse<IBet>> {
+    ): Promise<BetPaginatedResponse<IBet>> {
         if (!userId) {
             throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
         }

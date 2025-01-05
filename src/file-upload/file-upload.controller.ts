@@ -1,18 +1,21 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { fileUploadService } from './file-upload.service';
 
 export class FileUploadController {
 
-  public async uploadFile(req: Request, res: Response) {
+  public async uploadFile(req: Request, res: Response, next: NextFunction) {
     try {
+      const userId = req.user?.id;
+      console.log("userId" + userId)
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded or invalid file type' });
       }
+      console.log(req.file.path)
 
-      const result = await fileUploadService.uploadFile(req.file);
-      return res.status(200).json({ message: 'File uploaded successfully', result });
+      const result = await fileUploadService.uploadFile(userId, req.file);
+      return res.status(200).json(result);
     } catch (error) {
-      return res.status(500).json({ message: 'Error uploading file', error });
+      next(error)
     }
   };
 

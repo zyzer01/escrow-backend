@@ -1,4 +1,4 @@
-import { admin } from 'better-auth/plugins';
+import { admin, username } from 'better-auth/plugins';
 import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
@@ -51,7 +51,25 @@ export const auth = betterAuth({
                 params: { link: url },
             })
         }
-    }  
+    },
+    deleteUser: {
+      enabled: true,
+      sendDeleteAccountVerification: async (
+          {
+              user,
+              url,
+              token
+          },
+          request
+      ) => {
+        await sendEmail({
+          to: user.email,
+          subject: 'Delete your account',
+          template: 'account-deletion',
+          params: { link: url },
+      })
+      },
+  },  
 },
   socialProviders: {
     google: {
@@ -61,6 +79,7 @@ export const auth = betterAuth({
   },
   plugins: [
     admin(),
+    username(),
     userMetadata()
   ],
   advanced: {

@@ -16,6 +16,7 @@ import {authController} from "./resources/auth/auth.controller";
 import { notificationController } from './resources/notifications/notification.controller';
 import { bankAccountController } from './resources/bank-account/bank-account.controller';
 import { fileUploadController } from './file-upload/file-upload.controller';
+import { profileController } from './resources/users/profile/profile.controller';
 
 
 function routes(app: Application) {
@@ -26,6 +27,10 @@ function routes(app: Application) {
   app.delete('/v1/users/:id', authenticateToken, authorizeRole('admin'), userController.deleteUser)
   app.get('/v1/search-users', authenticateToken, userController.searchUsers);
   app.post('/v1/users/check-username', userController.isUsernameTaken)
+
+  app.get('/v1/profile', authenticateToken, profileController.getProfile)
+  app.put('/v1/profile', authenticateToken, profileController.updateProfile)
+  app.get('/v1/profiles', profileController.getAllProfiles)
 
   app.post('/v1/auth/request-email-verification', signupLimiter, authController.requestEmailVerification)
   app.post('/v1/auth/complete-profile', authController.completeRegistration)
@@ -85,7 +90,7 @@ function routes(app: Application) {
   app.post('/v1/bank/set-primary', bankAccountController.setPrimaryBankAccount)
   app.delete('/v1/bank/:userId/accounts/:bankAccountId', bankAccountController.deleteBankAccount)
 
-  app.post('/v1/files/upload', upload.single('file'), fileUploadController.uploadFile)
+  app.post('/v1/files/upload', upload.single('file'), authenticateToken, fileUploadController.uploadFile)
   app.delete('/v1/files/:publicId/delete', fileUploadController.deleteFile);
 
 }

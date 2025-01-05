@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import Notification, { INotification } from './notification.model';
-import { PaginatedResponse } from '../../lib/types';
+import { BetPaginatedResponse } from '../../lib/types/bet';
 
 
 export class NotificationService {
@@ -36,7 +36,7 @@ export class NotificationService {
     page: number = 1,
     limit: number = 10,
     isRead?: boolean
-): Promise<PaginatedResponse<INotification>> {
+): Promise<BetPaginatedResponse<INotification>> {
     const query: Record<string, unknown> = { userId };
 
     if (typeof isRead !== 'undefined') {
