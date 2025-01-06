@@ -1,4 +1,4 @@
-import { admin, username } from 'better-auth/plugins';
+import { admin, createAuthMiddleware, username } from 'better-auth/plugins';
 import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
@@ -19,7 +19,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    sendResetPassword: async ({user, url, token}, request) => {
+    sendResetPassword: async ({ user, url, token }, request) => {
       await sendEmail({
         to: user.email,
         subject: "Reset your password",
@@ -42,35 +42,51 @@ export const auth = betterAuth({
   },
   user: {
     changeEmail: {
-        enabled: true,
-        sendChangeEmailVerification: async ({ user, newEmail, url, token }, request) => {
-            await sendEmail({
-                to: newEmail,
-                subject: 'Verify your email change',
-                template: 'email-change-request',
-                params: { link: url },
-            })
-        }
+      enabled: true,
+      sendChangeEmailVerification: async ({ user, newEmail, url, token }, request) => {
+        await sendEmail({
+          to: newEmail,
+          subject: 'Verify your email change',
+          template: 'email-change-request',
+          params: { link: url },
+        })
+      }
     },
     deleteUser: {
       enabled: true,
       sendDeleteAccountVerification: async (
-          {
-              user,
-              url,
-              token
-          },
-          request
+        {
+          user,
+          url,
+          token
+        },
+        request
       ) => {
         await sendEmail({
           to: user.email,
           subject: 'Delete your account',
           template: 'account-deletion',
           params: { link: url },
-      })
+        })
       },
-  },  
-},
+    },
+  },
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path.startsWith("/sign-up")) {
+        const newSession = ctx.context.newSession;
+        if (newSession) {
+          console.log(newSession)
+          await sendEmail({
+            to: newSession.user.email,
+            subject: 'Welcome to Escrow Bet',
+            template: 'welcome',
+            params: { firstName: newSession.user.name },
+          });
+        }
+      }
+    }),
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
@@ -84,5 +100,5 @@ export const auth = betterAuth({
   ],
   advanced: {
     cookiePrefix: "_Secure_eb"
-}
+  }
 });

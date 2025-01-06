@@ -20,8 +20,6 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
       email: session.user.email
     };
 
-    console.log(req.user)
-
     next();
   } catch (error) {
     next(error);

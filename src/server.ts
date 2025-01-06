@@ -44,7 +44,6 @@ app.get("/api/active-sessions", async (req, res) => {
   const session = await auth.api.listSessions({
     headers: fromNodeHeaders(req.headers),
   });
-  console.log(session);
   return res.json(session);
 });
 

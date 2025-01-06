@@ -6,7 +6,6 @@ export class FileUploadController {
   public async uploadFile(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;
-      console.log("userId" + userId)
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded or invalid file type' });
       }
