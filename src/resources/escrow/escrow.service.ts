@@ -1,3 +1,4 @@
+import { ClientSession } from 'mongoose';
 import { NotFoundException, UnprocessableEntityException } from '../../common/errors';
 import { StringConstants } from '../../common/strings';
 import { systemCommissionPercentage, witnessCommissionPercentage } from '../../config';
@@ -45,9 +46,9 @@ export class EscrowService {
      * Locks funds for a bet in escrow.
      * @param lockFundsData - The data to lock funds (creatorId, creatorStake, opponentId, opponentStake).
      */
-    public async lockFunds(lockFundsData: Partial<IEscrow>) {
-        const escrow = new Escrow(lockFundsData);
-        return await escrow.save();
+    public async lockFunds(lockFundsData: Partial<IEscrow>, session?: ClientSession) {
+        const lockedFunds = new Escrow(lockFundsData);
+        await lockedFunds.save({ session });
     }
 
 

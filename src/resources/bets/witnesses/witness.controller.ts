@@ -1,15 +1,20 @@
 import { witnessService } from './witness.service';
 import { NextFunction, Request, Response } from "express";
 import { selectNeutralWitness } from "../../../lib/utils/neutralWitness";
+import mongoose from 'mongoose';
 
 
 export class WitnessController {
 
     public async getWitnessInvite(req: Request, res: Response, next: NextFunction) {
-        const { invitationId } = req.params
+        const { witnessId } = req.params
+
+        if (!mongoose.Types.ObjectId.isValid(witnessId)) {
+            res.status(400).json({ message: 'Invalid witness ID' });
+        }
 
         try {
-            const witness = await witnessService.getWitnessInvite(invitationId)
+            const witness = await witnessService.getWitnessInvite(witnessId)
             return res.status(200).json(witness)
         } catch (error) {
             next(error)

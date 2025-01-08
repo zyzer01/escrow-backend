@@ -52,14 +52,14 @@ export class UserController {
 
   public async searchUsers(req: Request, res: Response, next: NextFunction) {
     // const userId = req.user?.id;
-    const { username } = req.query as { username: string };
+    const { email } = req.query as { email: string };
 
-    if (!username || typeof username !== 'string') {
-      return res.status(400).json({ error: 'Invalid username' });
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Invalid email' });
     }
 
     try {
-      const users = await userService.searchUsers(username);
+      const users = await userService.searchUsers(email);
       res.status(200).json(users);
     } catch (error) {
       next(error)

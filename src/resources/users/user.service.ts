@@ -42,9 +42,9 @@ export class UserService {
   }
 
 
-  public async searchUsers(username: string): Promise<IUser[] | null> {
-    return User.find({ username: { $regex: username, $options: 'i' } })
-      .select('id username firstName lastName')
+  public async searchUsers(email: string): Promise<IUser[] | null> {
+    return User.find({ email: { $regex: email, $options: 'i' } })
+      .select('id email name')
       .limit(10);
   }
 

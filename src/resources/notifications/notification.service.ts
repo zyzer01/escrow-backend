@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { ClientSession, Types } from 'mongoose';
 import Notification, { INotification } from './notification.model';
 import { BetPaginatedResponse } from '../../lib/types/bet';
 
@@ -12,10 +12,11 @@ export class NotificationService {
     message: string,
     link?: string,
     betId?: Types.ObjectId,
-    walletTransactionId?: Types.ObjectId
+    session?: ClientSession,
+    walletTransactionId?: Types.ObjectId,
   ): Promise<INotification[]> {
     const notifications = userIds.map((userId) => {
-      return new Notification({ userId, type, title, message, link, betId, walletTransactionId });
+      return new Notification({ userId, type, title, message, link, betId, session, walletTransactionId });
     });
 
     try {

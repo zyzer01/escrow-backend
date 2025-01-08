@@ -20,6 +20,7 @@ import BetHistory, { IBetHistory } from './models/bet-history.model';
 import { Verification } from '../auth/verification/verification.model';
 import { Account } from '../auth/account/account.model';
 import { Session } from '../auth/session/session.model';
+import mongoose from 'mongoose';
 
 export const OPEN_STATUSES = ["pending", "accepted", "active", "verified"] as const;
 export const HISTORY_STATUSES = ["closed", "canceled", "settled"] as const;
@@ -68,26 +69,40 @@ export class BetService {
         await bet.save();
 
         if (designatedWitnesses.length > 0) {
-            for (const witnessId of designatedWitnesses) {
-                const witnessType = witnessId === neutralWitnessId ? 'neutral' : 'user-designated';
-                const witness = new Witness({
-                    betId: bet._id,
-                    userId: witnessId,
-                    type: witnessType,
-                });
-                await witness.save();
+            const witnessPromises = designatedWitnesses.map(async (witnessId) => {
+                try {
+                    if (!mongoose.Types.ObjectId.isValid(witnessId)) {
+                        console.error(`Invalid witness ID format: ${witnessId}`);
+                        return;
+                    }
 
-                const witnessInviteLink = `${process.env.CLIENT_BASE_URL}/witness/${witnessId}`;
+                    const witnessType = witnessId === neutralWitnessId ? 'neutral' : 'user-designated';
 
-                await notificationService.createNotification(
-                    [witnessId.toString()],
-                    "witness-invite",
-                    "Witness Invitation",
-                    `You have been invited to witness a bet`,
-                    witnessInviteLink,
-                    bet._id
-                );
-            }
+                    const witness = new Witness({
+                        betId: bet._id,
+                        userId: witnessId,
+                        type: witnessType,
+                        status: 'pending'
+                    });
+
+                    const savedWitness = await witness.save();
+
+                    const witnessInviteLink = `${process.env.CLIENT_BASE_URL}/witness/${savedWitness._id}`;
+
+                    await notificationService.createNotification(
+                        [witnessId.toString()],
+                        "witness-invite",
+                        "Witness Invitation",
+                        `You have been invited to witness a bet: ${bet.title}`,
+                        witnessInviteLink,
+                        bet._id
+                    );
+                } catch (error) {
+                    console.error(`Failed to create witness invite for ${witnessId}:`, error);
+                }
+            });
+
+            await Promise.all(witnessPromises);
         }
 
         const invitation = new BetInvitation({
@@ -143,67 +158,103 @@ export class BetService {
      */
 
     public async acceptBetInvitation(userId: string, invitationId: string, opponentStake: number, opponentPrediction: string): Promise<IBet | null> {
-
         if (!userId) {
-            throw new UnauthorizedException(StringConstants.UNAUTHORIZED)
+            throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
         }
-
-        const invitation = await BetInvitation.findById(invitationId).populate('betId').populate({
-            path: 'creatorId',
-            select: 'email firstName'
-        });
-
-        console.log(invitation);
-
-        if (!invitation) {
-            throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND)
+    
+        const session = await mongoose.startSession();
+        session.startTransaction();
+    
+        try {
+            // Find invitation with session to ensure consistency
+            const invitation = await BetInvitation.findById(invitationId)
+                .populate({
+                    path: "betId",
+                    select: "title creatorId creatorStake opponentId opponentStake",
+                })
+                .populate({
+                    path: "creatorId",
+                    select: "email name",
+                })
+                .session(session);
+    
+            if (!invitation) {
+                throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
+            }
+    
+            if (invitation.status !== 'pending') {
+                throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED);
+            }
+    
+            const bet = invitation.betId;
+            if (!bet) {
+                throw new NotFoundException('Bet associated with the invitation not found');
+            }
+    
+            // Subtract wallet balance within transaction
+            await subtractWalletBalance(userId, opponentStake, session);
+    
+            // Update bet
+            bet.opponentStake = opponentStake;
+            bet.predictions.opponentPrediction = opponentPrediction;
+            bet.status = "accepted";
+            bet.totalStake = opponentStake + bet.creatorStake;
+            await bet.save({ session });
+    
+            invitation.status = 'accepted';
+            await invitation.save({ session });
+    
+            const user = invitation.creatorId;
+    
+            await lockFunds({
+                betId: bet._id,
+                creatorId: bet.creatorId,
+                creatorStake: bet.creatorStake,
+                opponentId: bet.opponentId,
+                opponentStake: bet.opponentStake,
+                status: 'locked'
+            }, session);
+    
+            const betLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}`;
+    
+            // Create notification and send email before committing transaction
+            try {
+                await Promise.all([
+                    notificationService.createNotification(
+                        [bet.creatorId],
+                        "bet-invite",
+                        "Bet Accepted",
+                        `Your bet "${bet.title}" has been accepted`,
+                        betLink,
+                        bet._id,
+                        session
+                    ),
+                    sendEmail({
+                        to: user.email,
+                        subject: 'Bet Accepted',
+                        template: 'bet-accepted',
+                        params: {
+                            firstName: user.name,
+                            betTitle: bet.title,
+                            betId: bet._id.toString()
+                        },
+                    })
+                ]);
+            } catch (error) {
+                await session.abortTransaction();
+                throw new Error('Failed to send notification or email');
+            }
+    
+            await session.commitTransaction();
+            return invitation;
+    
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+    
+        } finally {
+            session.endSession();
         }
-        if (invitation.status !== 'pending') {
-            throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
-        }
-
-
-        const bet = invitation.betId;
-        if (!bet) {
-            throw new NotFoundException('Bet associated with the invitation not found');
-        }
-
-        await subtractWalletBalance(userId, opponentStake)
-
-        bet.opponentStake = opponentStake;
-        bet.predictions.opponentPrediction = opponentPrediction;
-        bet.status = "accepted";
-        bet.totalStake = opponentStake + bet.creatorStake
-
-
-        await bet.save();
-
-        invitation.status = 'accepted';
-        await invitation.save();
-
-        const user = invitation.betId.creatorId;
-
-        await lockFunds({
-            betId: bet._id,
-            creatorId: bet.creatorId,
-            creatorStake: bet.creatorStake,
-            opponentId: bet.opponentId,
-            opponentStake: bet.opponentStake,
-            status: 'locked'
-        });
-
-        const betLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}`;
-
-        await notificationService.createNotification([bet.creatorId], "bet-invite", "Bet Accepted", `Your bet "${bet.title}" has been accepted`, betLink, bet._id);
-
-        await sendEmail({
-            to: user.email,
-            subject: 'Your Opponent Rejected The Invite',
-            template: 'bet-rejected',
-            params: { firstName: user.firstName, betTitle: bet.title, betId: bet._id.toString() },
-        });
-
-        return invitation
     }
 
     /**
@@ -211,15 +262,15 @@ export class BetService {
      * @param betId - The ID of the bet to reject.
      */
 
-    public async rejectBetInvitation(id: string): Promise<IBet | null> {
-        const invitation = await BetInvitation.findById(id)
+    public async rejectBetInvitation(invitationId: string): Promise<IBet | null> {
+        const invitation = await BetInvitation.findById(invitationId)
             .populate({
                 path: 'betId',
                 select: 'title'
             })
             .populate({
                 path: 'creatorId',
-                select: 'firstName email',
+                select: 'name email',
             });
 
         if (!invitation) {
@@ -245,11 +296,12 @@ export class BetService {
                 bet._id
             );
 
+            const firstName = user.name.split(" ")[0];
             await sendEmail({
                 to: user.email,
                 subject: 'Your Opponent Rejected The Invite',
                 template: 'bet-rejected',
-                params: { firstName: user.firstName, betTitle: bet.title, betId: bet._id.toString() },
+                params: { firstName: firstName, betTitle: bet.title, betId: bet._id.toString() },
             });
         } catch (error) {
             console.error("Failed to send email:", error);
@@ -443,7 +495,7 @@ export class BetService {
      * @returns - An array of bets the user has participated in.
      */
     public async getBetsHistory(
-        userId: string, 
+        userId: string,
         page: number = 1,
         limit: number = 10,
         filters: {
@@ -507,7 +559,7 @@ export class BetService {
         //     value: 'someValue',
         //     expiresAt: new Date('2024-12-31T23:59:59'),
         //   });
-          
+
         //   newVerification.save()
         //     .then((result) => {
         //       console.log('Verification saved:', result);
@@ -522,7 +574,7 @@ export class BetService {
         //     password: "hashedpassword123", // Use a library like bcrypt to hash passwords
         //     isVerified: true,
         //   });
-          
+
         //   newUser.save()
         // .then((result) => {
         // console.log('Account saved:', result);
@@ -531,43 +583,43 @@ export class BetService {
         //     console.error('Error saving account:', error);
         // });
 
-            //     const newSession = new Session({
-            //         userId: "6773f6c1b139a14e86ee95d3", // Replace with actual user ID
-            //         token: "secureRandomToken12345", // Generate a secure token
-            //         expiresAt: new Date(Date.now() + 60 * 60 * 1000), // Set expiration 1 hour from now
-            //         ipAddress: "192.168.1.1", // Replace with actual IP address
-            //         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36", // Replace with actual user agent
-            //         impersonatedBy: null, // If this session was created by another user, replace with their user ID
-            //       });
-            //   newSession.save()
-            //     .then((result) => {
-            //       console.log('Account saved:', result);
-            //     })
-            //     .catch((error) => {
-            //       console.error('Error saving account:', error);
-            //     });
+        //     const newSession = new Session({
+        //         userId: "6773f6c1b139a14e86ee95d3", // Replace with actual user ID
+        //         token: "secureRandomToken12345", // Generate a secure token
+        //         expiresAt: new Date(Date.now() + 60 * 60 * 1000), // Set expiration 1 hour from now
+        //         ipAddress: "192.168.1.1", // Replace with actual IP address
+        //         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36", // Replace with actual user agent
+        //         impersonatedBy: null, // If this session was created by another user, replace with their user ID
+        //       });
+        //   newSession.save()
+        //     .then((result) => {
+        //       console.log('Account saved:', result);
+        //     })
+        //     .catch((error) => {
+        //       console.error('Error saving account:', error);
+        //     });
 
-            // const newUser = new User({
-            //     username: "john_doe", // Unique and must be at least 3 characters
-            //     name: "John Doe", // Required
-            //     email: "johndoe@example.com", // Required, unique, and must be a valid email format
-            //     emailVerified: false, // Default is false
-            //     image: "https://example.com/avatar.jpg", // Optional profile image
-            //     role: "user", // Default role is 'user'
-            //     banned: false, // Default is false
-            //     banReason: null, // Only set if the user is banned
-            //     banExpires: null, // Only set if the user is banned temporarily
-            //   });
-              
-            //   // Save the user to the database
-            //   newUser.save()
-            //     .then((result) => {
-            //       console.log('User saved:', result);
-            //     })
-            //     .catch((error) => {
-            //       console.error('Error saving user:', error);
-            //     });
-              
+        // const newUser = new User({
+        //     username: "john_doe", // Unique and must be at least 3 characters
+        //     name: "John Doe", // Required
+        //     email: "johndoe@example.com", // Required, unique, and must be a valid email format
+        //     emailVerified: false, // Default is false
+        //     image: "https://example.com/avatar.jpg", // Optional profile image
+        //     role: "user", // Default role is 'user'
+        //     banned: false, // Default is false
+        //     banReason: null, // Only set if the user is banned
+        //     banExpires: null, // Only set if the user is banned temporarily
+        //   });
+
+        //   // Save the user to the database
+        //   newUser.save()
+        //     .then((result) => {
+        //       console.log('User saved:', result);
+        //     })
+        //     .catch((error) => {
+        //       console.error('Error saving user:', error);
+        //     });
+
 
         return Bet.find()
     }
