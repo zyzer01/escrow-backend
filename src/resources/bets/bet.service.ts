@@ -209,7 +209,7 @@ export class BetService {
             await lockFunds({
                 betId: bet._id,
                 creatorId: bet.creatorId,
-                creatorStake: bet.creatorStake,
+                creatorStake: bet.creatorStake, 
                 opponentId: bet.opponentId,
                 opponentStake: bet.opponentStake,
                 status: 'locked'
