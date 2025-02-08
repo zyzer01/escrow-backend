@@ -1,6 +1,5 @@
 import express, { Application } from 'express';
 import routes from './routes';
-import dbConnect from './lib/db';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -8,6 +7,7 @@ import { errorHandler } from './lib/middleware/ErrorHandler';
 import { toNodeHandler } from "better-auth/node";
 import { auth } from './lib/auth';
 import { fromNodeHeaders } from "better-auth/node";
+import { prisma } from './lib/db';
 
 const app: Application = express();
 dotenv.config();
@@ -50,11 +50,18 @@ app.get("/api/active-sessions", async (req, res) => {
 routes(app);
 app.use(errorHandler);
 
-dbConnect().then(() => {
-  console.log('Connected to the database');
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT} in ${NODE_ENV} mode`);
-  });
-}).catch(error => {
-  console.error('Database connection failed', error);
-});
+async function startServer() {
+  try {
+    await prisma.$connect();
+    console.log('Connected to the database');
+
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT} in ${NODE_ENV} mode`);
+    });
+  } catch (error) {
+    console.error('Database connection failed', error);
+    process.exit(1); // Exit process if database connection fails
+  }
+}
+
+startServer(); 

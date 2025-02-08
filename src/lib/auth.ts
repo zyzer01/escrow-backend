@@ -1,21 +1,19 @@
 import { admin, createAuthMiddleware, openAPI, username } from 'better-auth/plugins';
 import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
-import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../mail/mail.service";
 import { userMetadata } from './plugins';
 
-const client = new MongoClient(process.env.MONGODB_URI as string);
-const db = client.db()
-
-client.connect()
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("Failed to connect to MongoDB:", err));
+const prisma = new PrismaClient();
 
 export const auth = betterAuth({
   appName: "Escrowbet",
   trustedOrigins: ["http://localhost:3000"],
-  database: mongodbAdapter(db),
+  database: prismaAdapter(prisma, {
+    provider: "postgresql",
+  }),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

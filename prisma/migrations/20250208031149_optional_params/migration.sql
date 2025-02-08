@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "user" ALTER COLUMN "role" DROP NOT NULL,
+ALTER COLUMN "banned" DROP NOT NULL;
