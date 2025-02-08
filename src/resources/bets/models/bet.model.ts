@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
-export interface IBet extends Document {
+export interface IBet {
   creatorId: Types.ObjectId;
   opponentId?: Types.ObjectId;
   opponentEmail: string;

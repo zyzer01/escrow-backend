@@ -1,0 +1,37 @@
+model Witness {
+  id        String   @id @default(cuid())
+  betId     String
+  userId    String
+  /// @Validator.IsEmail()
+  email     String
+  vote      VoteType?
+  type      WitnessType
+  status    WitnessStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bet       Bet      @relation(fields: [betId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([betId, userId])
+  @@index([email, betId, userId])
+  @@map("witness")
+}
+
+enum VoteType {
+  CREATOR
+  OPPONENT
+  DRAW
+  INVALID
+}
+
+enum WitnessType {
+  USER_DESIGNATED
+  NEUTRAL
+}
+
+enum WitnessStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}

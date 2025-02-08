@@ -1,0 +1,118 @@
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Float    @default(0)
+  currency  String   @default("NGN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallet")
+}
+
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Float
+  type        WalletTransactionType
+  reference   String   @unique
+  description String?
+  betId       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bet         Bet?     @relation(fields: [betId], references: [id], onDelete: SetNull)
+
+  notification Notification[]
+
+  @@map("wallet_transaction")
+}
+
+enum WalletTransactionType {
+  FUND
+  PAYOUT
+  REFUND
+  COMMISSION
+  WITHDRAWAL
+}
+
+
+model Escrow {
+  id            String   @id @default(cuid())
+  betId         String   @unique
+  creatorId     String
+  creatorStake  Float
+  opponentId    String?
+  opponentStake Float?
+  status        EscrowStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bet           Bet   @relation(fields: [betId], references: [id], onDelete: Cascade)
+  creator       User  @relation("EscrowCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  opponent      User? @relation("EscrowOpponent", fields: [opponentId], references: [id], onDelete: Cascade)
+
+  @@map("escrow")
+}
+
+enum EscrowStatus {
+  PENDING
+  LOCKED
+  RELEASED
+  REFUNDED
+}
+
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  userId        String
+  bankName      String
+  bankCode      String
+  accountNumber String
+  accountName   String
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bank_account")
+  @@unique([userId, accountNumber])
+}
+
+
+
+model SystemWallet {
+  id                 String               @id @default(cuid())
+  type               SystemWalletType     @unique
+  balance            Float                @default(0)
+  transactionHistory SystemWalletTransaction[]
+
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@map("system_wallet")
+}
+
+model SystemWalletTransaction {
+  id                String               @id @default(cuid())
+  systemWalletId    String
+  transactionType   SystemTransactionType
+  amount           Float
+  createdAt        DateTime              @default(now())
+
+  systemWallet     SystemWallet          @relation(fields: [systemWalletId], references: [id], onDelete: Cascade)
+
+  @@map("system_wallet_transaction")
+}
+
+enum SystemWalletType {
+  SYSTEM
+}
+
+enum SystemTransactionType {
+  REVENUE
+}

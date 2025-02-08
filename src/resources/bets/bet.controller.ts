@@ -73,7 +73,7 @@ export class BetController {
 
     public async getAllBets(req: Request, res: Response, next: NextFunction) {
         try {
-            const bets = await betService.getAllBets();
+            const bets = await betService.findAll();
             res.status(200).json(bets);
         } catch (error) {
             next(error)

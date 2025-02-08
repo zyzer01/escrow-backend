@@ -1,0 +1,128 @@
+model Bet {
+  id               String       @id @default(cuid())
+
+  /// @Validator.MaxLength(100)
+  title            String
+  /// @Validator.MaxLength(500)
+  description      String?
+  /// @Validator.IsFloat()
+  /// @Validator.Min(0)
+  creatorStake     Float
+  /// @Validator.IsFloat()
+  /// @Validator.Min(0)
+  opponentStake    Float?
+  /// @Validator.IsFloat()
+  /// @Validator.Min(0)
+  totalStake       Float?
+  /// @Validator.IsDate()
+  creatorId        String
+  opponentId       String?
+  /// @Validator.IsEmail()
+  betOpponentEmail String?
+  winnerId         String?
+  deadline         DateTime?
+  status           BetStatus    @default(PENDING)
+  betType          BetType
+  deletedAt        DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  creator          User         @relation("BetCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  opponent         User?        @relation("BetOpponent", fields: [opponentId], references: [id], onDelete: Cascade)
+  opponentEmail    User?        @relation("BetOpponentEmail", fields: [betOpponentEmail], references: [email])
+  winner           User?        @relation("BetWinner", fields: [winnerId], references: [id], onDelete: Cascade)
+
+  predictions      Predictions?
+  escrow           Escrow?
+  betDispute       BetDispute?
+  witnesses        Witness[]
+  betInvitations   BetInvitation[]
+  walletTransactions WalletTransaction[]
+  notifications     Notification[]
+
+  @@index([betOpponentEmail])
+  @@map("bet")
+}
+
+
+model BetInvitation {
+  id            String   @id @default(cuid())
+  betId         String 
+  creatorId     String?
+  invitedUserId String?
+  invitedEmail  String?
+  status        InvitationStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bet           Bet   @relation(fields: [betId], references: [id], onDelete: Cascade)
+  creator       User? @relation("BetInvitationCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  invitedUser   User? @relation("BetInvitationInvitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+
+  @@map("bet_invitation")
+}
+
+
+model BetDispute {
+  id               String   @id @default(cuid())
+  betId           String
+  reportedBy      String
+  /// @Validator.MaxLength(500)
+  reason         String
+  status         DisputeStatus @default(OPEN)
+  createdAt      DateTime @default(now())
+  resolvedAt     DateTime?
+  /// @Validator.MaxLength(500)
+  additionalEvidence String?
+
+  bet            Bet   @relation(fields: [betId], references: [id], onDelete: Cascade)
+  reporter       User  @relation(fields: [reportedBy], references: [id], onDelete: Cascade)
+
+  @@unique([betId])
+
+  @@map("bet_dispute")
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+
+
+enum BetStatus {
+  PENDING
+  ACCEPTED
+  ACTIVE
+  VERIFIED
+  SETTLED
+  CANCELED
+  DISPUTED
+  REVERSED
+  REFUNDED
+  CLOSED
+}
+
+enum BetType {
+  WITH_WITNESSES   @map("WITH-WITNESSES")
+  WITHOUT_WITNESSES @map("WITHOUT-WITNESSES")
+}
+
+model Predictions {
+  id                 String  @id @default(cuid())
+  creatorPrediction  String
+  opponentPrediction String?
+  betId              String  @unique
+  bet                Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+
+  @@map("prediction")
+}

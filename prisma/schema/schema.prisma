@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  /// @Field(() => ID) 
+  id                String    @id @default(cuid())
+  ///Valid
+  /// @Validator.MaxLength(50)
+  username          String?   @unique
+  /// @Validator.MaxLength(50)
+  name              String
+  /// @Validator.IsEmail()
+  /// @Validator.MaxLength(50)
+  email             String    @unique
+  /// @HideField({ input: true, output: false })
+  emailVerified     Boolean   @default(false)
+  /// @Validator.MaxLength(255)
+  image             String?
+  /// @HideField({ input: true, output: false })
+  /// @Validator.IsIn(["user", "admin", "moderator"])
+  role              String?    @default("user")
+  banned            Boolean?   @default(false)
+  /// @Validator.MaxLength(255)
+  banReason         String?
+  banExpires        Int?
+  dob               String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  profile           Profile?
+  sessions          Session[]
+  accounts          Account[]
+  witness           Witness[]
+  wallet            Wallet?
+  walletTransactions WalletTransaction[]
+  notifications     Notification[]
+  bankAccounts      BankAccount[]
+  betDisputes       BetDispute[]
+  
+  createdBets       Bet[]     @relation("BetCreator")
+  joinedBets        Bet[]     @relation("BetOpponent")
+  wonBets           Bet[]     @relation("BetWinner")
+  opponentEmail     Bet[]   @relation("BetOpponentEmail")
+
+  betInvitationsSent      BetInvitation[] @relation("BetInvitationCreator")
+  betInvitationsReceived BetInvitation[] @relation("BetInvitationInvitedUser")
+
+  escrowCreator     Escrow[] @relation("EscrowCreator")
+  escrowOpponent    Escrow[] @relation("EscrowOpponent")
+
+  @@map("user")
+}
+
+model Profile {
+  /// @Field(() => ID) 
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// @Validator.IsInt()
+  /// @Validator.Min(0)
+  totalBets    Int     @default(0)
+  /// @Validator.IsFloat()
+  /// @Validator.Min(0)
+  totalWagered Float  @default(0.0)
+  /// @Validator.IsFloat()
+  /// @Validator.Min(0)
+  totalWon     Float   @default(0.0)
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("profile")
+}
+
+model Session {
+  /// @Field(() => ID) 
+  id             String   @id @default(cuid())
+  expiresAt      DateTime
+  token          String
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  /// @Field(() => ID) 
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  /// @Field(() => ID) 
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+
+model Notification {
+  /// @Field(() => ID) 
+  id                  String            @id @default(cuid())
+  userId              String
+  type                NotificationType
+  title               String
+  message             String
+  link                String?
+  isRead              Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  betId               String?
+  walletTransactionId String?
+
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bet                 Bet?              @relation(fields: [betId], references: [id], onDelete: Cascade)
+  walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Cascade)
+
+  @@map("notification")
+}
+
+enum NotificationType {
+  BET_INVITE
+  BET_ENGAGED
+  BET_SETTLED
+  BET_VERIFIED
+  BET_DISPUTE
+  WITNESS_INVITE
+  WALLET_WITHDRAWAL
+  WALLET_FUNDING
+  SYSTEM_ALERT
+}
