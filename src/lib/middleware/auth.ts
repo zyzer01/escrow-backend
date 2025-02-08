@@ -18,7 +18,7 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
       id: session.user.id,
       role: session.user.role,
       email: session.user.email
-    };
+    }; 
 
     next();
   } catch (error) {

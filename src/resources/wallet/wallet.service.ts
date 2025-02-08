@@ -7,6 +7,7 @@ import { StringConstants } from '../../common/strings';
 import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
 import { ConflictException, NotFoundException, UnprocessableEntityException } from '../../common/errors';
 import { v4 as uuidv4 } from 'uuid';
+import { ClientSession } from 'mongoose';
 
 const reference = `WD-${uuidv4()}`;
 
@@ -314,12 +315,12 @@ class WalletService {
   }
 
 
-  public async subtractWalletBalance(userId: string, amount: number): Promise<IWallet> {
+  public async subtractWalletBalance(userId: string, amount: number, session?: ClientSession): Promise<IWallet> {
     try {
       const wallet = await Wallet.findOneAndUpdate(
         { userId, balance: { $gte: amount } },
         { $inc: { balance: -amount } },      
-        { new: true }                       
+        { new: true, session }                       
       );
   
       if (!wallet) {

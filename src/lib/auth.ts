@@ -1,4 +1,4 @@
-import { admin, createAuthMiddleware, username } from 'better-auth/plugins';
+import { admin, createAuthMiddleware, openAPI, username } from 'better-auth/plugins';
 import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
@@ -96,7 +96,8 @@ export const auth = betterAuth({
   plugins: [
     admin(),
     username(),
-    userMetadata()
+    userMetadata(),
+    openAPI()
   ],
   advanced: {
     cookiePrefix: "_Secure_eb"

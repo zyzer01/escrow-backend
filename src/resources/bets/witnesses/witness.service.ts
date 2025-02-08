@@ -1,4 +1,6 @@
-import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from "../../../common/errors";
+import mongoose from "mongoose";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from "../../../common/errors";
+import { GoneException } from "../../../common/errors/GoneException";
 import { StringConstants } from "../../../common/strings";
 import User from "../../users/user.model";
 import { walletService } from "../../wallet/wallet.service";
@@ -14,11 +16,16 @@ export class WitnessService {
         try {
             const witness = await Witness.findById(witnessId)
                 .populate({
-                    path: 'betId'
+                    path: 'betId',
+                    select: 'title description creatorStake totalStake deadline status'
                 });
 
             if (!witness) {
                 throw new Error('Witness invitation not found');
+            }
+
+            if (witness.status !== 'pending') {
+                throw new GoneException('This invitation has already been responded to');
             }
 
             return witness;
@@ -40,10 +47,11 @@ export class WitnessService {
             throw new NotFoundException(StringConstants.WITNESS_NOT_FOUND)
         }
         if (witness.status !== 'pending') {
-            throw new ConflictException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
+            throw new GoneException(StringConstants.BET_ALREADY_ACCEPTED_REJECTED)
         }
 
         const bet = await Bet.findById(witness.betId);
+        
         if (!bet) {
             throw new NotFoundException(StringConstants.BET_NOT_FOUND);
         }
@@ -63,7 +71,7 @@ export class WitnessService {
 
     public async rejectWitnessInvite(witnessId: string): Promise<Response> {
 
-        const witness = await Witness.findById(witnessId);
+        const witness = await Witness.findOne({ witnessId });
 
         if (!witness) {
             throw new NotFoundException(StringConstants.WITNESS_NOT_FOUND)
@@ -186,7 +194,7 @@ export class WitnessService {
         try {
             const witnesses = await Witness.find({
                 betId,
-            }).populate('userId', 'username firstName lastName') // Assuming `userId` is the correct reference field in the `Witness` schema.
+            }).populate('userId', 'username name') // Assuming `userId` is the correct reference field in the `Witness` schema.
                 .lean();
 
             if (!witnesses) {

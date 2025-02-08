@@ -25,7 +25,7 @@ function routes(app: Application) {
   app.get('/v1/users/:id', authenticateToken, userController.getUser)
   app.put('/v1/users/:id', authenticateToken, userController.updateUser)
   app.delete('/v1/users/:id', authenticateToken, authorizeRole('admin'), userController.deleteUser)
-  app.get('/v1/search-users', authenticateToken, userController.searchUsers);
+  app.get('/v1/search-users', userController.searchUsers);
   app.post('/v1/users/check-username', userController.isUsernameTaken)
 
   app.get('/v1/profile', authenticateToken, profileController.getProfile)
@@ -49,8 +49,8 @@ function routes(app: Application) {
   app.get('/v1/bets/all', betController.getAllBets)
   app.get('/v1/bets', authenticateToken, betController.getBets)
   app.get('/v1/bets-history', authenticateToken, betController.getBetsHistory)
-  app.get('/v1/bets/:betId', authenticateToken, betController.getBet)
-  app.put('/v1/bets/:betId', authenticateToken, betController.updateBet)
+  app.get('/v1/bet/:betId', authenticateToken, betController.getBet)
+  app.put('/v1/bet/:betId', authenticateToken, betController.updateBet)
   app.delete('/v1/bets/:betId', authenticateToken, betController.deleteBet)
   app.get('/v1/bets/invitation/:invitationId', authenticateToken, betController.getBetInvitation)
   app.post('/v1/bets/accept', authenticateToken, betController.acceptBetInvitation)
@@ -60,11 +60,11 @@ function routes(app: Application) {
   app.post('/v1/bets/:betId/cancel', betController.cancelBet)
 
   app.get('/v1/bets/witness/:betId', authenticateToken, witnessController.getBetWitnesses)
-  app.get('/v1/bets/witness/:invitationId', witnessController.getWitnessInvite)
-  app.post('/v1/bets/witness/:witnessId/accept', witnessController.witnessAcceptInvite)
-  app.post('/v1/bets/witness/:witnessId/recuse', witnessController.witnessRejectInvite)
-  app.post('/v1/bets/witness/vote', witnessController.castVote)
-  app.post('/v1/bets/witness/:witnessId/judge', witnessController.determineWinner)
+  app.get('/v1/witness/:witnessId', witnessController.getWitnessInvite)
+  app.post('/v1/witness/:witnessId/accept', witnessController.witnessAcceptInvite)
+  app.post('/v1/witness/:witnessId/reject', witnessController.witnessRejectInvite)
+  app.post('/v1/witness/vote', witnessController.castVote)
+  app.post('/v1/witness/:witnessId/judge', witnessController.determineWinner)
 
   app.get('/v1/escrow/:betId', escrowController.getEscrow)
   app.get('/v1/escrow/:id/stakes', escrowController.getTotalStakes)

@@ -2,8 +2,9 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IBet extends Document {
   creatorId: Types.ObjectId;
-  opponentId: Types.ObjectId;
-  winnerId: Types.ObjectId;
+  opponentId?: Types.ObjectId;
+  opponentEmail: string;
+  winnerId?: Types.ObjectId;
   title: string;
   description: string;
   creatorStake: number;
@@ -11,18 +12,18 @@ export interface IBet extends Document {
   totalStake?: number;
   deadline: Date;
   status: 'pending' | 'accepted' | 'active' | 'verified' | 'settled' | 'canceled' | 'disputed' | 'reversed' | 'refunded' | 'closed';
-  witnesses: Types.ObjectId[];
   predictions: {
     creatorPrediction: string;
     opponentPrediction?: string;
   };
-  betType: 'with-witnesses' | 'without-witnesses'; 
+  betType: 'with-witnesses' | 'without-witnesses';
 }
 
 const BetSchema: Schema = new Schema(
   {
     creatorId: { type: Schema.Types.ObjectId, ref: "User" },
-    opponentId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    opponentId: { type: Schema.Types.ObjectId, ref: "User" },
+    opponentEmail: { type: String, required: true },
     winnerId: { type: Schema.Types.ObjectId, ref: "User" },
     title: { type: String, required: true },
     description: { type: String },
@@ -47,7 +48,6 @@ const BetSchema: Schema = new Schema(
       ],
       default: "pending",
     },
-    witnesses: [{ type: Schema.Types.ObjectId, ref: "Witness" }],
     predictions: {
       creatorPrediction: { type: String, required: true },
       opponentPrediction: { type: String },
@@ -57,4 +57,8 @@ const BetSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Bet || mongoose.model<IBet>('Bet', BetSchema);
+BetSchema.index({ opponentEmail: 1 });
+BetSchema.index({ 'witnesses.email': 1 });
+
+export const Bet = mongoose.model<IBet>('Bet', BetSchema);
+

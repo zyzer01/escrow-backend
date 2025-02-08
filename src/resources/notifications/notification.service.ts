@@ -12,7 +12,7 @@ export class NotificationService {
     message: string,
     link?: string,
     betId?: Types.ObjectId,
-    walletTransactionId?: Types.ObjectId
+    walletTransactionId?: Types.ObjectId,
   ): Promise<INotification[]> {
     const notifications = userIds.map((userId) => {
       return new Notification({ userId, type, title, message, link, betId, walletTransactionId });

@@ -4,6 +4,7 @@ export interface IBetInvitation extends Document {
   betId: Types.ObjectId;
   creatorId: Types.ObjectId;
   invitedUserId: Types.ObjectId;
+  invitedEmail: string;
   status: 'pending' | 'accepted' | 'rejected';
 }
 
@@ -11,7 +12,8 @@ const BetInvitationSchema = new Schema<IBetInvitation>(
   {
     betId: { type: Schema.Types.ObjectId, ref: 'Bet', required: true },
     creatorId: { type: Schema.Types.ObjectId, ref: 'User' },
-    invitedUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    invitedUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+    invitedEmail: { type: String },
     status: { type: String, default: 'pending', enum: ['pending', 'accepted', 'rejected'] },
   },
   { timestamps: true }

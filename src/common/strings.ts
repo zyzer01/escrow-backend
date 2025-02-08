@@ -10,7 +10,7 @@ export enum StringConstants {
   BET_WINNER_NOT_DETERMINED = "Winner not determined",
   PENDING_WITNESS = "Bet cannot be engaged. Some witnesses have not accepted the bet.",
   CONFIRM_EMAIL = "Confirm your email",
-  OPPONENT_ID_MISSING = "Please Select an opponent",
+  OPPONENT_EMAIL_MISSING = "Please Select an opponent",
   CANNOT_BE_OWN_OPPONENT= "You cannot choose yourself as an opponent",
   DISPUTE_ALREADY_OPEN = "Dispute is already open",
   DISPUTE_NOT_FOUND = "Dispute not found",
