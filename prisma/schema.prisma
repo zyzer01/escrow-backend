@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
 }
 
 datasource db {
@@ -14,29 +15,41 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  username      String?   @unique
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          String?    @default("user")
-  banned        Boolean?   @default(false)
-  banReason     String?
-  banExpires    BigInt?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  dob           String?
+  id                String    @id @default(cuid())
+  username          String?   @unique
+  name              String
+  email             String    @unique
+  emailVerified     Boolean   @default(false)
+  image             String?
+  role              String?    @default("user")
+  banned            Boolean?   @default(false)
+  banReason         String?
+  banExpires        BigInt?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  dob               String?
+
+  profile       Profile?
   sessions      Session[]
   accounts      Account[]
+  
+  createdBets   Bet[]     @relation("BetCreator")
+  joinedBets    Bet[]     @relation("BetOpponent")
+  wonBets       Bet[]     @relation("BetWinner")
+  opponentEmail Bet[]   @relation("BetOpponentEmail")
 
   @@map("user")
 }
 
-enum Role {
-  USER
-  MODERATOR
-  ADMIN
+model Profile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalBets    Int     @default(0)
+  totalWagered Float  @default(0.0)
+  totalWon     Float   @default(0.0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Session {

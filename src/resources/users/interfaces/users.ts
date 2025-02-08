@@ -1,11 +1,14 @@
-export interface IUser extends Document {
-  username: string;
+export interface IUser {
+  username: string | null;
   name: string;
   email: string;
   emailVerified: boolean;
-  image: string;
-  role: string;
-  banned?: boolean;
-  banReason?: string;
-  banExpires?: number;
+  image: string | null;
+  role: string | null;
+  banned?: boolean | null;
+  banReason?: string | null;
+  banExpires?: number | bigint | null;
+  createdAt: Date;
+  updatedAt: Date;
+  dob?: string | null;
 }

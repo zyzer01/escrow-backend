@@ -1,0 +1,55 @@
+model Bet {
+  id               String       @id @default(cuid())
+  title            String
+  description      String?
+  creatorStake     Float
+  opponentStake    Float?
+  totalStake       Float?
+  deadline         DateTime?
+  status           BetStatus    @default(PENDING)
+  betType          BetType
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  creatorId        String
+  creator          User         @relation("BetCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  opponentId       String?
+  opponent         User?        @relation("BetOpponent", fields: [opponentId], references: [id], onDelete: Cascade)
+
+  betOpponentEmail String?
+  opponentEmail    User?        @relation("BetOpponentEmail", fields: [betOpponentEmail], references: [email])
+
+  winnerId         String?
+  winner           User?        @relation("BetWinner", fields: [winnerId], references: [id], onDelete: Cascade)
+
+  predictions      Predictions?
+
+  @@index([betOpponentEmail])
+}
+
+enum BetStatus {
+  PENDING
+  ACCEPTED
+  ACTIVE
+  VERIFIED
+  SETTLED
+  CANCELED
+  DISPUTED
+  REVERSED
+  REFUNDED
+  CLOSED
+}
+
+enum BetType {
+  WITH_WITNESSES
+  WITHOUT_WITNESSES
+}
+
+model Predictions {
+  id                 String  @id @default(cuid())
+  creatorPrediction  String
+  opponentPrediction String?
+  betId              String  @unique
+  bet                Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+}

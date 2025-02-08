@@ -21,6 +21,7 @@ import { Account } from '../auth/account/account.model';
 import { Session } from '../auth/session/session.model';
 import mongoose from 'mongoose';
 import { Witness } from './witnesses/witness.model';
+import { prisma } from '../../lib/db';
 
 export const OPEN_STATUSES = ["pending", "accepted", "active", "verified"] as const;
 export const HISTORY_STATUSES = ["closed", "canceled", "settled"] as const;
@@ -181,7 +182,11 @@ export class BetService {
      */
 
     public async updateBet(betId: string, betData: Partial<IBet>): Promise<IBet | null> {
-        const bet = await Bet.findById(betId)
+        const bet = await prisma.bet.findUnique({
+            where: {
+                id: betId
+            }
+        })
         console.log(bet)
         if (!bet) {
             throw new NotFoundException(StringConstants.BET_NOT_FOUND)

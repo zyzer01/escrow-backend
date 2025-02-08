@@ -7,7 +7,7 @@ const MAX_FIELDS = 5;
 
 export class UserService {
 
-  public async getAllUsers() {
+  public async getAllUsers(): Promise<IUser[]> {
     return prisma.user.findMany();
   }
 
@@ -51,7 +51,7 @@ export class UserService {
     });
   }
 
-  public async updateUser(id: string, userData: any) {
+  public async updateUser(id: string, userData: Partial<IUser>) {
     return prisma.user.update({
       where: { id },
       data: userData,

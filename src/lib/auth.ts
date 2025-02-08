@@ -1,6 +1,5 @@
 import { admin, createAuthMiddleware, openAPI, username } from 'better-auth/plugins';
 import { betterAuth } from "better-auth";
-import { MongoClient } from "mongodb";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../mail/mail.service";
