@@ -1,3 +1,4 @@
+import { BetType } from "./../../../node_modules/.prisma/client/index.d";
 import { Types } from "mongoose";
 import BetInvitation from "./models/bet-invitation.model";
 import { Bet } from "./models/bet.model";
@@ -13,13 +14,14 @@ import { sendEmail } from "../../mail/mail.service";
 import Escrow from "../escrow/escrow.model";
 import { UnauthorizedException } from "../../common/errors";
 import { notificationService } from "./../notifications/notification.service";
-import { subtractWalletBalance } from "../wallet/wallet.service";
+import { deductWalletBalanceTx, subtractWalletBalance } from "../wallet/wallet.service";
 import { BetPaginatedResponse } from "../../lib/types/bet";
 import BetHistory, { IBetHistory } from "./models/bet-history.model";
 import mongoose from "mongoose";
 import { Witness } from "./witnesses/witness.model";
 import { prisma } from "../../lib/db";
-import { IBet } from "./interfaces/bet";
+import { IBet, ICreateBetInput } from "./interfaces/bet";
+import { validateEmail } from "../../lib/utils/validators";
 
 export const OPEN_STATUSES = [
   "pending",
@@ -30,126 +32,291 @@ export const OPEN_STATUSES = [
 export const HISTORY_STATUSES = ["closed", "canceled", "settled"] as const;
 
 export class BetService {
+  // public async createBet(
+  //   userId: string,
+  //   betData: IBet & { opponentEmail: string },
+  //   witnessEmails: string[]
+  // ) {
+  //   if (!betData.opponentEmail) {
+  //     throw new BadRequestException(StringConstants.OPPONENT_EMAIL_MISSING);
+  //   }
 
-  
-    public async createBet(
-      userId: string,
-      betData: IBet & { opponentEmail: string },
-      witnessEmails: string[]
-    ) {
-      if (!betData.opponentEmail) {
-        throw new BadRequestException(StringConstants.OPPONENT_EMAIL_MISSING);
+  //   if (witnessEmails.length > 0 && witnessEmails.length !== 3) {
+  //     throw new BadRequestException(StringConstants.INSUFFICIENT_WITNESS_DESIGNATION);
+  //   }
+
+  //   return await prisma.$transaction(async (tx) => {
+  //     const user = await tx.user.findUnique({ where: { id: userId } });
+  //     if (!user) {
+  //       throw new NotFoundException(StringConstants.USER_NOT_FOUND);
+  //     }
+
+  //     const opponent = await tx.user.findUnique({
+  //       where: { email: betData.opponentEmail },
+  //     });
+
+  //     if (opponent && opponent.id === userId) {
+  //       throw new BadRequestException(StringConstants.CANNOT_BE_OWN_OPPONENT);
+  //     }
+
+  //     const opponentId = opponent?.id ?? null;
+
+  //     // Validate witness emails
+  //     if (witnessEmails.includes(user.email) || witnessEmails.includes(betData.opponentEmail)) {
+  //       throw new BadRequestException(StringConstants.INVALID_WITNESS_ASSIGNMENT);
+  //     }
+
+  //     // Fetch witness users in one query
+  //     const witnessUsers = await tx.user.findMany({
+  //       where: { email: { in: witnessEmails } },
+  //       select: { id: true, email: true },
+  //     });
+
+  //     const witnessData = witnessEmails.map((email) => ({
+  //       email,
+  //       userId: witnessUsers.find((w) => w.email === email)?.id ?? null,
+  //       betId: "",
+  //       type: "user-designated",
+  //       status: "pending",
+  //     }));
+
+  //     // Subtract wallet balance
+  //     await tx.wallet.update({
+  //       where: { userId },
+  //       data: { balance: { decrement: betData.creatorStake } },
+  //     });
+
+  //     // Create bet
+  //     const bet = await tx.bet.create({
+  //       data: {
+  //         ...betData,
+  //         creatorId: userId,
+  //         opponentId,
+  //         betOpponentEmail: betData.opponentEmail,
+  //       },
+  //     });
+
+  //     // Update witness data with betId
+  //     witnessData.forEach((witness) => (witness.betId = bet.id));
+
+  //     // Create escrow
+  //     await tx.escrow.create({
+  //       data: {
+  //         betId: bet.id,
+  //         creatorId: userId,
+  //         creatorStake: betData.creatorStake,
+  //       },
+  //     });
+
+  //     // Insert witnesses
+  //     if (witnessData.length > 0) {
+  //       await tx.witness.createMany({ data: witnessData });
+  //     }
+
+  //     // Create bet invitation
+  //     const invitation = await tx.betInvitation.create({
+  //       data: {
+  //         betId: bet.id,
+  //         creatorId: userId,
+  //         invitedUserId: opponentId,
+  //         invitedEmail: betData.opponentEmail,
+  //       },
+  //     });
+
+  //     const opponentInviteLink = `${process.env.CLIENT_BASE_URL}/invite/${invitation.id}`;
+
+  //     // Send email invitation to opponent
+  //     await sendEmail({
+  //       to: betData.opponentEmail,
+  //       subject: "Bet Invite",
+  //       template: "bet-invite",
+  //       params: { inviteLink: opponentInviteLink },
+  //     });
+
+  //     // Send notifications
+  //     if (opponentId) {
+  //       await tx.notification.create({
+  //         data: {
+  //           userId: opponentId,
+  //           type: "BET_INVITE",
+  //           title: "Bet Invitation",
+  //           message: `You have been invited to a bet by ${user.username}`,
+  //           link: opponentInviteLink,
+  //         },
+  //       });
+  //     }
+
+  //     return bet;
+  //   });
+  // }
+
+  public async createBet(userId: string, input: ICreateBetInput) {
+    // Validate witness count
+    try {
+      if (input.witnesses.length > 0 && input.witnesses.length !== 3) {
+        throw new BadRequestException("Exactly 3 witnesses are required");
       }
-    
-      if (witnessEmails.length > 0 && witnessEmails.length !== 3) {
-        throw new BadRequestException(StringConstants.INSUFFICIENT_WITNESS_DESIGNATION);
-      }
-    
+
       return await prisma.$transaction(async (tx) => {
-        const user = await tx.user.findUnique({ where: { id: userId } });
-        if (!user) {
-          throw new NotFoundException(StringConstants.USER_NOT_FOUND);
-        }
-    
-        const opponent = await tx.user.findUnique({
-          where: { email: betData.opponentEmail },
-        });
-    
-        if (opponent && opponent.id === userId) {
-          throw new BadRequestException(StringConstants.CANNOT_BE_OWN_OPPONENT);
-        }
-    
-        const opponentId = opponent?.id ?? null;
-    
-        // Validate witness emails
-        if (witnessEmails.includes(user.email) || witnessEmails.includes(betData.opponentEmail)) {
-          throw new BadRequestException(StringConstants.INVALID_WITNESS_ASSIGNMENT);
-        }
-    
-        // Fetch witness users in one query
-        const witnessUsers = await tx.user.findMany({
-          where: { email: { in: witnessEmails } },
+        // Fetch creator
+        const creator = await tx.user.findUnique({
+          where: { id: userId },
           select: { id: true, email: true },
         });
-    
-        const witnessData = witnessEmails.map((email) => ({
-          email,
-          userId: witnessUsers.find((w) => w.email === email)?.id ?? null,
-          betId: "",
-          type: "user-designated",
-          status: "pending",
-        }));
-    
-        // Subtract wallet balance
-        await tx.wallet.update({
-          where: { userId },
-          data: { balance: { decrement: betData.creatorStake } },
+
+        if (!creator) {
+          throw new NotFoundException("User not found");
+        }
+
+        // Handle opponent
+        let opponentId: string | null = null;
+        let opponentEmail: string | null = null;
+
+        if (input.opponent.type === "user") {
+          const opponent = await tx.user.findUnique({
+            where: { id: input.opponent.value },
+            select: { id: true, email: true },
+          });
+
+          if (!opponent) {
+            throw new NotFoundException("Opponent user not found");
+          }
+
+          if (opponent.id === userId) {
+            throw new BadRequestException("Cannot be your own opponent");
+          }
+
+          opponentId = opponent.id;
+          opponentEmail = opponent.email;
+        } else {
+          // Validate email format
+          if (!validateEmail(input.opponent.value)) {
+            throw new BadRequestException("Invalid opponent email format");
+          }
+
+          if (input.opponent.value === creator.email) {
+            throw new BadRequestException("Cannot be your own opponent");
+          }
+
+          opponentEmail = input.opponent.value;
+        }
+
+        // Process witnesses
+        const witnessEmails = input.witnesses.map((w) =>
+          w.type === "email" ? w.value : ""
+        );
+        const witnessUserIds = input.witnesses.map((w) =>
+          w.type === "user" ? w.value : ""
+        );
+
+        // Validate witness emails/ids don't include creator or opponent
+        if (
+          [...witnessEmails, ...witnessUserIds].some(
+            (w) =>
+              w === creator.email ||
+              w === opponentEmail ||
+              w === creator.id ||
+              w === opponentId
+          )
+        ) {
+          throw new BadRequestException(
+            "Creator or opponent cannot be witnesses"
+          );
+        }
+
+        // Fetch existing witness users
+        const existingWitnessUsers = await tx.user.findMany({
+          where: {
+            OR: [
+              { id: { in: witnessUserIds } },
+              { email: { in: witnessEmails } },
+            ],
+          },
+          select: { id: true, email: true },
         });
-    
+
+        // Deduct stake from creator's wallet
+
+        await deductWalletBalanceTx(tx, userId, input.creatorStake, 'STAKE');
+
         // Create bet
         const bet = await tx.bet.create({
           data: {
-            ...betData,
+            title: input.title,
+            description: input.description,
+            creatorStake: input.creatorStake,
+            opponentStake: input.opponentStake,
+            deadline: input.deadline,
+            betType: input.betType,
             creatorId: userId,
             opponentId,
-            betOpponentEmail: betData.opponentEmail,
+            opponentEmail: opponentEmail,
           },
         });
-    
-        // Update witness data with betId
-        witnessData.forEach((witness) => (witness.betId = bet.id));
-    
+
         // Create escrow
         await tx.escrow.create({
           data: {
             betId: bet.id,
             creatorId: userId,
-            creatorStake: betData.creatorStake,
+            creatorStake: input.creatorStake,
           },
         });
-    
-        // Insert witnesses
-        if (witnessData.length > 0) {
-          await tx.witness.createMany({ data: witnessData });
-        }
-    
-        // Create bet invitation
-        const invitation = await tx.betInvitation.create({
+
+        // Create bet invitation for opponent
+        await tx.betInvitation.create({
           data: {
             betId: bet.id,
             creatorId: userId,
             invitedUserId: opponentId,
-            invitedEmail: betData.opponentEmail,
+            invitedEmail: opponentId ? null : opponentEmail,
+            status: "PENDING",
           },
         });
-    
-        const opponentInviteLink = `${process.env.CLIENT_BASE_URL}/invite/${invitation.id}`;
-    
-        // Send email invitation to opponent
-        await sendEmail({
-          to: betData.opponentEmail,
-          subject: "Bet Invite",
-          template: "bet-invite",
-          params: { inviteLink: opponentInviteLink },
-        });
-    
-        // Send notifications
-        if (opponentId) {
-          await tx.notification.create({
-            data: {
-              userId: opponentId,
-              type: "BET_INVITE",
-              title: "Bet Invitation",
-              message: `You have been invited to a bet by ${user.username}`,
-              link: opponentInviteLink,
-            },
-          });
+
+        // Create witness records and invitations
+        if (input.betType === "WITH_WITNESSES") {
+          for (const witness of input.witnesses) {
+            const existingUser = existingWitnessUsers.find(
+              (u) =>
+                (witness.type === "user" && u.id === witness.value) ||
+                (witness.type === "email" && u.email === witness.value)
+            );
+
+            // Create witness record
+            await tx.witness.create({
+              data: {
+                betId: bet.id,
+                userId: existingUser?.id as string,
+                email:
+                  witness.type === "email"
+                    ? witness.value
+                    : existingUser?.email || null,
+                type: "USER_DESIGNATED",
+                status: "PENDING",
+              },
+            });
+
+            // Create invitation
+            await tx.betInvitation.create({
+              data: {
+                betId: bet.id,
+                creatorId: userId,
+                invitedUserId: existingUser?.id || null,
+                invitedEmail: witness.type === "email" ? witness.value : null,
+                status: "PENDING",
+              },
+            });
+          }
         }
-    
+
         return bet;
       });
+    } catch (error) {
+      throw new Error(`Failed to create bet: ${error}`);
     }
-    
+  }
+
   /**
    * Updates a bet.
    * @param betId - The ID of the bet to update.
@@ -731,9 +898,9 @@ export class BetService {
 
   public async deleteBet(id: string) {
     return prisma.bet.delete({
-        where: {
-            id
-        }
+      where: {
+        id,
+      },
     });
   }
 }

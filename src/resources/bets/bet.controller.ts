@@ -7,9 +7,10 @@ export class BetController {
 
     public async createBet(req: Request, res: Response, next: NextFunction) {
         const userId = req.user?.id;
-        const { designatedWitnesses, ...betData } = req.body;
+        console.log(userId)
+        const { ...betData } = req.body;
         try {
-            const bet = await betService.createBet(userId!, betData, designatedWitnesses);
+            const bet = await betService.createBet(userId!, betData);
             res.status(201).json(bet);
         } catch (error) {
             next(error)

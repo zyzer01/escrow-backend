@@ -1,3 +1,5 @@
+import { BetType } from "@prisma/client";
+
 export interface IBet {
   id: string;
   creatorId: string;
@@ -28,4 +30,21 @@ export interface IBet {
   betType: 'WITH-WITNESSES' | 'WITHOUT-WITNESSES';
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ICreateBetInput {
+  title: string;
+  description?: string;
+  creatorStake: number;
+  opponentStake: number;
+  deadline?: Date;
+  betType: BetType;
+  opponent: {
+    type: 'email' | 'user';
+    value: string;
+  };
+  witnesses: Array<{
+    type: 'email' | 'user';
+    value: string;
+  }>;
 }

@@ -18,7 +18,7 @@ model Bet {
   creatorId        String
   opponentId       String?
   /// @Validator.IsEmail()
-  betOpponentEmail String?
+  opponentEmail String?
   winnerId         String?
   deadline         DateTime?
   status           BetStatus    @default(PENDING)
@@ -29,7 +29,6 @@ model Bet {
 
   creator          User         @relation("BetCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   opponent         User?        @relation("BetOpponent", fields: [opponentId], references: [id], onDelete: Cascade)
-  opponentEmail    User?        @relation("BetOpponentEmail", fields: [betOpponentEmail], references: [email])
   winner           User?        @relation("BetWinner", fields: [winnerId], references: [id], onDelete: Cascade)
 
   predictions      Predictions?
@@ -40,7 +39,11 @@ model Bet {
   walletTransactions WalletTransaction[]
   notifications     Notification[]
 
-  @@index([betOpponentEmail])
+  @@index([opponentEmail])
+  @@index([creatorId])
+  @@index([opponentId])
+  @@index([winnerId])
+
   @@map("bet")
 }
 
@@ -59,6 +62,10 @@ model BetInvitation {
   creator       User? @relation("BetInvitationCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   invitedUser   User? @relation("BetInvitationInvitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
 
+  @@index([betId])
+  @@index([creatorId])
+  @@index([invitedUserId])
+  
   @@map("bet_invitation")
 }
 

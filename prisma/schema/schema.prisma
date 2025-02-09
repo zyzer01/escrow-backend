@@ -53,7 +53,6 @@ model User {
   createdBets       Bet[]     @relation("BetCreator")
   joinedBets        Bet[]     @relation("BetOpponent")
   wonBets           Bet[]     @relation("BetWinner")
-  opponentEmail     Bet[]   @relation("BetOpponentEmail")
 
   betInvitationsSent      BetInvitation[] @relation("BetInvitationCreator")
   betInvitationsReceived BetInvitation[] @relation("BetInvitationInvitedUser")

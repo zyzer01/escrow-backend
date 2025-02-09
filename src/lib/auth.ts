@@ -1,11 +1,10 @@
 import { admin, createAuthMiddleware, openAPI, username } from 'better-auth/plugins';
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { sendEmail } from "../mail/mail.service";
 import { userMetadata } from './plugins';
-
-const prisma = new PrismaClient();
+import { prisma } from './db';
 
 export const auth = betterAuth({
   appName: "Escrowbet",
@@ -34,6 +33,13 @@ export const auth = betterAuth({
         subject: "Verify your email address",
         template: "confirm-email",
         params: { link: url },
+      });
+      await prisma.wallet.create({
+        data: {
+          userId: user.id,
+          balance: 0,
+          currency: "NGN"
+        }
       });
     },
   },
@@ -73,13 +79,39 @@ export const auth = betterAuth({
       if (ctx.path.startsWith("/sign-up")) {
         const newSession = ctx.context.newSession;
         if (newSession) {
-          console.log(newSession)
-          await sendEmail({
-            to: newSession.user.email,
-            subject: 'Welcome to Escrow Bet',
-            template: 'welcome',
-            params: { firstName: newSession.user.name },
-          });
+          try {
+            await prisma.$transaction(async (tx) => {
+              await tx.wallet.create({
+                data: {
+                  userId: newSession.user.id,
+                  balance: 0,
+                  currency: "NGN"
+                }
+              });
+            });
+            await sendEmail({
+              to: newSession.user.email,
+              subject: 'Welcome to Escrow Bet',
+              template: 'welcome',
+              params: { firstName: newSession.user.name },
+            });
+    
+          } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+              switch (error.code) {
+                case 'P2002':
+                  console.error(`Unique constraint violation for user ${newSession.user.id}`);
+                  break;
+                case 'P2003':
+                  console.error(`Foreign key constraint violation for user ${newSession.user.id}`);
+                  break;
+                default:
+                  console.error(`Database error creating wallet for user ${newSession.user.id}:`, error);
+              }
+            } else {
+              console.error('Error in signup process:', error);
+            }
+          }
         }
       }
     }),

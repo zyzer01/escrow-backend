@@ -1,13 +1,17 @@
-import { notificationService } from './../notifications/notification.service';
-import Wallet, { IWallet } from './models/wallet.model';
-import WalletTransaction from './models/wallet-transaction.model';
-import User from '../users/user.model';
-import axios from 'axios'
-import { StringConstants } from '../../common/strings';
-import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from '../../config/payment';
-import { ConflictException, NotFoundException, UnprocessableEntityException } from '../../common/errors';
-import { v4 as uuidv4 } from 'uuid';
-import { ClientSession } from 'mongoose';
+import { notificationService } from "./../notifications/notification.service";
+import Wallet, { IWallet } from "./models/wallet.model";
+import WalletTransaction from "./models/wallet-transaction.model";
+import User from "../users/user.model";
+import axios from "axios";
+import { StringConstants } from "../../common/strings";
+import { PAYSTACK_BASE_URL, PAYSTACK_SECRET_KEY } from "../../config/payment";
+import {
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from "../../common/errors";
+import { v4 as uuidv4 } from "uuid";
+import { Prisma } from "@prisma/client";
 
 const reference = `WD-${uuidv4()}`;
 
@@ -16,8 +20,11 @@ const headers = {
 };
 
 class WalletService {
-
-  public async payoutFunds(userId: string, amount: number, betId: string): Promise<void> {
+  public async payoutFunds(
+    userId: string,
+    amount: number,
+    betId: string
+  ): Promise<void> {
     try {
       let userWallet = await Wallet.findOne({ userId });
 
@@ -31,41 +38,47 @@ class WalletService {
       const transaction = new WalletTransaction({
         userId,
         amount,
-        type: 'payout',
+        type: "payout",
         description: `Payout from Bet ID: ${betId}`,
         reference: reference,
-        betId
+        betId,
       });
       await transaction.save();
     } catch (error) {
-      console.error('Error during payout:', error);
-      throw new Error('Payout failed');
+      console.error("Error during payout:", error);
+      throw new Error("Payout failed");
     }
-  };
+  }
 
-
-  public async refund(userId: string, amount: number, betId: string): Promise<void> {
+  public async refund(
+    userId: string,
+    amount: number,
+    betId: string
+  ): Promise<void> {
     const userWallet = await Wallet.findOne({ userId });
 
     if (!userWallet) {
-      throw new Error('User wallet not found.');
+      throw new Error("User wallet not found.");
     }
 
     userWallet.balance += amount;
     const transaction = new WalletTransaction({
       userId,
       amount,
-      type: 'refund',
+      type: "refund",
       description: `Refund from Bet ID: ${betId}`,
-      betId
+      betId,
     });
     await transaction.save();
 
     await userWallet.save();
   }
 
-
-  public async addToUserWallet(userId: string, amount: number, betId?: string): Promise<void> {
+  public async addToUserWallet(
+    userId: string,
+    amount: number,
+    betId?: string
+  ): Promise<void> {
     let userWallet = await Wallet.findOne({ userId });
 
     if (!userWallet) {
@@ -78,74 +91,87 @@ class WalletService {
     const transaction = new WalletTransaction({
       userId,
       amount,
-      type: 'commission',
+      type: "commission",
       description: `Bet Commission`,
       betId: betId,
-      reference: reference
+      reference: reference,
     });
     await transaction.save();
   }
 
-  public async fundWallet(userId: string, amount: number, callbackUrl: string): Promise<any> {
+  public async fundWallet(
+    userId: string,
+    amount: number,
+    callbackUrl: string
+  ): Promise<any> {
     try {
-      const user = await User.findById(userId)
+      const user = await User.findById(userId);
 
       if (!user) {
-        throw new Error(StringConstants.USER_NOT_FOUND)
+        throw new Error(StringConstants.USER_NOT_FOUND);
       }
-      const response = await axios.post(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
-        email: user.email,
-        amount: amount * 100,
-        currency: 'NGN',
-        callback_url: callbackUrl,
-        first_name: user.firstName,
-        reference: reference
-      }, {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+      const response = await axios.post(
+        `${PAYSTACK_BASE_URL}/transaction/initialize`,
+        {
+          email: user.email,
+          amount: amount * 100,
+          currency: "NGN",
+          callback_url: callbackUrl,
+          first_name: user.firstName,
+          reference: reference,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          },
         }
-      });
+      );
 
       await notificationService.createNotification(
         [user._id],
-        'wallet-funding',
-        'Wallet Funded',
+        "wallet-funding",
+        "Wallet Funded",
         `Your wallet was funded with N${amount}`
-      )
+      );
 
       return response.data.data;
     } catch (error) {
-      console.error('Error initializing Paystack transaction:', error);
-      throw new Error('Error initializing Paystack transaction');
+      console.error("Error initializing Paystack transaction:", error);
+      throw new Error("Error initializing Paystack transaction");
     }
   }
 
   public async paystackCallback(reference: string): Promise<void> {
     try {
       // Verify transaction with Paystack
-      const response = await axios.get(`${PAYSTACK_BASE_URL}/transaction/verify/${reference}`, {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+      const response = await axios.get(
+        `${PAYSTACK_BASE_URL}/transaction/verify/${reference}`,
+        {
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          },
         }
-      });
+      );
 
       const transaction = response.data.data;
-      const { email } = transaction.customer
+      const { email } = transaction.customer;
       const { amount, status } = transaction;
 
-      if (status === 'success') {
+      if (status === "success") {
         const user = await User.findOne({ email });
-        const wallet = await Wallet.findOne({ userId: user._id })
+        const wallet = await Wallet.findOne({ userId: user._id });
 
         if (!wallet) {
-          throw new NotFoundException(StringConstants.WALLET_NOT_FOUND)
+          throw new NotFoundException(StringConstants.WALLET_NOT_FOUND);
         }
 
         if (!user) {
           throw new NotFoundException(StringConstants.USER_NOT_FOUND);
         }
 
-        const existingTransaction = await WalletTransaction.findOne({ reference });
+        const existingTransaction = await WalletTransaction.findOne({
+          reference,
+        });
         if (existingTransaction) {
           throw new ConflictException(StringConstants.TRANSACTION_PROCESSED);
         }
@@ -158,91 +184,111 @@ class WalletService {
           userId: user._id,
           amount: amount / 100,
           reference: reference,
-          type: 'fund'
+          type: "fund",
         });
         await walletTransaction.save();
       } else {
         throw new Error(StringConstants.FAILED_TRANSACTION);
       }
     } catch (error) {
-      console.error('Error verifying transaction:', error);
-      throw new Error('Error verifying transaction');
+      console.error("Error verifying transaction:", error);
+      throw new Error("Error verifying transaction");
     }
   }
 
-
-  public async verifyAccountNumber(accountNumber: string, bankCode: string): Promise<any> {
+  public async verifyAccountNumber(
+    accountNumber: string,
+    bankCode: string
+  ): Promise<any> {
     try {
       const response = await axios.get(`${PAYSTACK_BASE_URL}/bank/resolve`, {
         params: {
           account_number: accountNumber,
-          bank_code: bankCode
+          bank_code: bankCode,
         },
         headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
-        }
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        },
       });
 
       return response.data.data;
     } catch (error) {
-      console.error('Error verifying account number:', error);
-      throw new Error('Account verification failed');
+      console.error("Error verifying account number:", error);
+      throw new Error("Account verification failed");
     }
   }
 
-
-  private async createTransferRecipient(user: any, bankCode: string, accountNumber: string): Promise<any> {
-
+  private async createTransferRecipient(
+    user: any,
+    bankCode: string,
+    accountNumber: string
+  ): Promise<any> {
     //Remember to check if bank account for user exists, if not, ask them to create a bank account
     try {
-      const recipientResponse = await axios.post(`${PAYSTACK_BASE_URL}/transferrecipient`, {
-        type: 'nuban',
-        name: user.firstName,
-        account_number: accountNumber,
-        bank_code: bankCode,
-        currency: 'NGN'
-      }, {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+      const recipientResponse = await axios.post(
+        `${PAYSTACK_BASE_URL}/transferrecipient`,
+        {
+          type: "nuban",
+          name: user.firstName,
+          account_number: accountNumber,
+          bank_code: bankCode,
+          currency: "NGN",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          },
         }
-      });
+      );
 
       return recipientResponse.data.data;
     } catch (error) {
-      console.error('Error creating transfer recipient:', error);
-      throw new Error('Error creating transfer recipient');
+      console.error("Error creating transfer recipient:", error);
+      throw new Error("Error creating transfer recipient");
     }
   }
 
-
-  public async withdrawFromWallet(walletId: string, amount: number, bankCode: string, accountNumber: string): Promise<void> {
+  public async withdrawFromWallet(
+    walletId: string,
+    amount: number,
+    bankCode: string,
+    accountNumber: string
+  ): Promise<void> {
     try {
-      const wallet = await Wallet.findById(walletId).populate('userId');
+      const wallet = await Wallet.findById(walletId).populate("userId");
 
       if (!wallet) {
-        throw new Error('Wallet not found');
+        throw new Error("Wallet not found");
       }
 
       if (wallet.balance < amount) {
-        throw new Error('Insufficient wallet balance');
+        throw new Error("Insufficient wallet balance");
       }
 
       // Initiate withdrawal through Paystack
-      const transferRecipient = await this.createTransferRecipient(wallet.userId, bankCode, accountNumber);
+      const transferRecipient = await this.createTransferRecipient(
+        wallet.userId,
+        bankCode,
+        accountNumber
+      );
 
       // wallet.userId.transferRecipientCode = transferRecipient.recipient_code
 
-      const withdrawalResponse = await axios.post(`${PAYSTACK_BASE_URL}/transfer`, {
-        source: 'balance',
-        amount: amount * 100, // Convert Naira to Kobo
-        reference: reference,
-        recipient: transferRecipient.recipient_code,
-        reason: 'Wallet Withdrawal'
-      }, {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+      const withdrawalResponse = await axios.post(
+        `${PAYSTACK_BASE_URL}/transfer`,
+        {
+          source: "balance",
+          amount: amount * 100, // Convert Naira to Kobo
+          reference: reference,
+          recipient: transferRecipient.recipient_code,
+          reason: "Wallet Withdrawal",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          },
         }
-      });
+      );
 
       // If successful, deduct the wallet balance
       if (withdrawalResponse.data.status === true) {
@@ -253,29 +299,31 @@ class WalletService {
         const walletTransaction = new WalletTransaction({
           userId: wallet.users._id,
           amount,
-          transactionType: 'withdrawal',
+          transactionType: "withdrawal",
           reference: withdrawalResponse.data.data.reference,
         });
 
         await notificationService.createNotification(
           [wallet.users._id],
-          'wallet-withdrawal',
-          'Withdrawal Successful',
+          "wallet-withdrawal",
+          "Withdrawal Successful",
           `Your withdrawal of N${amount} was successful`
-        )
+        );
         await walletTransaction.save();
       } else {
         throw new Error(StringConstants.FAILED_WITHDRAWAL);
       }
     } catch (error) {
-      console.error('Error during withdrawal:', error);
-      throw new Error('Error during withdrawal');
+      console.error("Error during withdrawal:", error);
+      throw new Error("Error during withdrawal");
     }
   }
 
-
-
-  public async updateWalletBalance(userId: string, amount: number, betId?: string): Promise<void> {
+  public async updateWalletBalance(
+    userId: string,
+    amount: number,
+    betId?: string
+  ): Promise<void> {
     const wallet = await Wallet.findOne({ userId });
 
     if (!wallet) {
@@ -288,14 +336,13 @@ class WalletService {
     const transaction = new WalletTransaction({
       userId,
       amount,
-      type: 'fund',
+      type: "fund",
       description: `Wallet Funded`,
       betId: betId,
-      reference: reference
+      reference: reference,
     });
     await transaction.save();
   }
-
 
   public async getWalletBalance(userId: string): Promise<number> {
     try {
@@ -304,7 +351,7 @@ class WalletService {
       if (!wallet) {
         wallet = await new Wallet({
           userId: userId,
-          balance: 10000
+          balance: 10000,
         }).save();
       }
 
@@ -314,26 +361,36 @@ class WalletService {
     }
   }
 
-
-  public async subtractWalletBalance(userId: string, amount: number, session?: ClientSession): Promise<IWallet> {
+  public async deductWalletBalanceTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    amount: number,
+    type: "PAYOUT" | "WITHDRAWAL" | "STAKE" | "COMMISSION"
+  ) {
     try {
-      const wallet = await Wallet.findOneAndUpdate(
-        { userId, balance: { $gte: amount } },
-        { $inc: { balance: -amount } },      
-        { new: true, session }                       
-      );
-  
+      const wallet = await tx.wallet.update({
+        where: { userId, balance: { gte: amount } },
+        data: { balance: { decrement: amount } },
+      });
+
       if (!wallet) {
-        throw new UnprocessableEntityException('Insufficient balance or wallet not found');
+        throw new Error("Insufficient balance or wallet not found");
       }
-  
-      return wallet;
+
+      const transaction = await tx.walletTransaction.create({
+        data: {
+          userId,
+          amount,
+          type,
+          reference: `txn_${Date.now()}`,
+          description: `Deducted ${amount} for ${type}`,
+        },
+      });
+      return transaction;
     } catch (error) {
-      console.error(error)
       throw new Error(`Error deducting wallet balance: ${error}`);
     }
   }
-
 }
 
 export const walletService = new WalletService();
@@ -345,6 +402,5 @@ export const {
   withdrawFromWallet,
   updateWalletBalance,
   getWalletBalance,
-  subtractWalletBalance
-
-} = new WalletService()
+  deductWalletBalanceTx,
+} = new WalletService();

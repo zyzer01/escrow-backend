@@ -3,9 +3,9 @@ model Witness {
   betId     String
   userId    String
   /// @Validator.IsEmail()
-  email     String
+  email     String?
   vote      VoteType?
-  type      WitnessType
+  type      WitnessType   @default(USER_DESIGNATED)
   status    WitnessStatus @default(PENDING)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
