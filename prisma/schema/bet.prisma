@@ -18,7 +18,7 @@ model Bet {
   creatorId        String
   opponentId       String?
   /// @Validator.IsEmail()
-  opponentEmail String?
+  opponentEmail    String?
   winnerId         String?
   deadline         DateTime?
   status           BetStatus    @default(PENDING)
@@ -37,7 +37,6 @@ model Bet {
   witnesses        Witness[]
   betInvitations   BetInvitation[]
   walletTransactions WalletTransaction[]
-  notifications     Notification[]
 
   @@index([opponentEmail])
   @@index([creatorId])

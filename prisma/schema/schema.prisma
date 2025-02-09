@@ -144,11 +144,9 @@ model Notification {
   isRead              Boolean           @default(false)
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
-  betId               String?
   walletTransactionId String?
 
   user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bet                 Bet?              @relation(fields: [betId], references: [id], onDelete: Cascade)
   walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Cascade)
 
   @@map("notification")

@@ -7,35 +7,31 @@ import { NotificationType, Prisma } from '@prisma/client';
 
 export class NotificationService {
   public async createNotification({
-    userIds,
+    userId,
     type,
     title,
     message,
     link,
-    betId,
     walletTransactionId,
   }: {
-    userIds: string[];
+    userId: string;
     type: NotificationType;
     title: string;
     message: string;
     link?: string;
-    betId?: string;
     walletTransactionId?: string;
   }) {
     try {
-      console.log('userids:', userIds)
-      const notifications = await prisma.notification.createMany({
-        data: userIds.map((userId) => ({
+      const notifications = await prisma.notification.create({
+        data: {
           userId,
           type,
           title,
           message,
           link,
-          betId,
           walletTransactionId,
-        })),
-      });
+        },
+      })
 
       return notifications;
     } catch (error) {
