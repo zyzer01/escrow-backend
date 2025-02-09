@@ -1,17 +1,22 @@
 model Witness {
   id        String   @id @default(cuid())
   betId     String
-  userId    String
+  userId    String?
   /// @Validator.IsEmail()
   email     String?
   vote      VoteType?
   type      WitnessType   @default(USER_DESIGNATED)
   status    WitnessStatus @default(PENDING)
+  token     String?   @unique
+  tokenExpiresAt     DateTime?
+  acceptedAt DateTime?
+  declinedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   bet       Bet      @relation(fields: [betId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
 
   @@unique([betId, userId])
   @@index([email, betId, userId])

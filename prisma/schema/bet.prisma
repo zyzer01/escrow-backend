@@ -55,6 +55,8 @@ model BetInvitation {
   invitedUserId String?
   invitedEmail  String?
   status        InvitationStatus @default(PENDING)
+  token         String?   @unique
+  tokenExpiresAt     DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
