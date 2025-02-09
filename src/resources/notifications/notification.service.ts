@@ -6,39 +6,27 @@ import { NotificationType, Prisma } from '@prisma/client';
 
 
 export class NotificationService {
-  public async createNotification(
-    userIds: string | string[],
-    type: NotificationType,
-    title: string,
-    message: string,
-    link?: string,
-    betId?: string,
-    walletTransactionId?: string,
-  ) {
+  public async createNotification({
+    userIds,
+    type,
+    title,
+    message,
+    link,
+    betId,
+    walletTransactionId,
+  }: {
+    userIds: string[];
+    type: NotificationType;
+    title: string;
+    message: string;
+    link?: string;
+    betId?: string;
+    walletTransactionId?: string;
+  }) {
     try {
-      // Input validation
-      if (!userIds || !type || !title || !message) {
-        throw new Error('Required parameters missing');
-      }
-
-      // Convert single userId to array if necessary
-      const userIdArray = Array.isArray(userIds) ? userIds : [userIds];
-
-      // Validate array is not empty
-      if (userIdArray.length === 0) {
-        throw new Error('No user IDs provided');
-      }
-
-      // Validate each userId
-      userIdArray.forEach((userId, index) => {
-        if (!userId || typeof userId !== 'string') {
-          throw new Error(`Invalid userId at index ${index}`);
-        }
-      });
-
-      // Create notifications
+      console.log('userids:', userIds)
       const notifications = await prisma.notification.createMany({
-        data: userIdArray.map((userId) => ({
+        data: userIds.map((userId) => ({
           userId,
           type,
           title,
@@ -46,20 +34,13 @@ export class NotificationService {
           link,
           betId,
           walletTransactionId,
-          createdAt: new Date(), // Explicitly set creation timestamp
         })),
       });
 
       return notifications;
     } catch (error) {
-      console.error("Failed to create notifications:", error);
-      
-      // Enhance error message with more context
-      if (error instanceof Error) {
-        throw new Error(`Notification creation failed: ${error.message}`);
-      } else {
-        throw new Error('Notification creation failed: Unknown error');
-      }
+      console.log("Failed to create notifications", error);
+      throw error;
     }
   }
 

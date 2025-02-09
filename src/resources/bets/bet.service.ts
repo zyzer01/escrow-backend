@@ -1,4 +1,3 @@
-import { BetType } from "./../../../node_modules/.prisma/client/index.d";
 import { Types } from "mongoose";
 import BetInvitation from "./models/bet-invitation.model";
 import { Bet } from "./models/bet.model";
@@ -17,10 +16,7 @@ import {
   createNotification,
   notificationService,
 } from "./../notifications/notification.service";
-import {
-  deductWalletBalanceTx,
-  subtractWalletBalance,
-} from "../wallet/wallet.service";
+import { deductWalletBalanceTx } from "../wallet/wallet.service";
 import { BetPaginatedResponse } from "../../lib/types/bet";
 import BetHistory, { IBetHistory } from "./models/bet-history.model";
 import mongoose from "mongoose";
@@ -29,6 +25,7 @@ import { prisma } from "../../lib/db";
 import { IBet, ICreateBetInput } from "./interfaces/bet";
 import { validateEmail } from "../../lib/utils/validators";
 import { nanoid } from "nanoid";
+import { NotificationType } from "@prisma/client";
 
 export const OPEN_STATUSES = [
   "pending",
@@ -178,7 +175,7 @@ export class BetService {
         // Handle opponent
         let opponentId: string | null = null;
         let opponentEmail: string | null = null;
-        let opponent = null
+        let opponent = null;
 
         if (input.opponent.type === "user") {
           opponent = await tx.user.findUnique({
@@ -194,7 +191,7 @@ export class BetService {
             throw new BadRequestException("Cannot be your own opponent");
           }
 
-          console.log('opponent email', opponent.email)
+          console.log("opponent email", opponent.email);
 
           opponentId = opponent.id;
           opponentEmail = opponent.email;
@@ -289,60 +286,62 @@ export class BetService {
         const opponentInviteLink = `${process.env.CLIENT_BASE_URL}/bet/join/${opponentInvitation.token}`;
 
         if (opponent?.email && opponentId) {
-            // For existing users: Send both in-app notification and email
-            await Promise.all([
-              createNotification(
-                [opponentId],
-                "BET_INVITE",
-                "You have been invited to a bet",
-                "Join this bet using this link",
-                opponentInviteLink,
-                bet.id
-              ),
-              sendEmail({
-                to: [opponentEmail!],
-                subject: "You have been invited to a bet",
-                template: "bet-invite",
-                params: { 
-                  link: opponentInviteLink,
-                  expiresAt: opponentInvitation.tokenExpiresAt
-                },
-              })
-            ]);
-          } else if (opponentEmail) {
-            await sendEmail({
-              to: [opponentEmail],
-              subject: "You have been invited to a bet",
-              template: "bet-invitation-new-user",
-              params: { 
-                link: opponentInviteLink,
-                expiresAt: opponentInvitation.tokenExpiresAt,
-                registerLink: `${process.env.CLIENT_BASE_URL}/register?email=${encodeURIComponent(opponentEmail)}`
-              },
-            });
-          }
-        if (opponentEmail) {
-            await sendEmail({
-              to: [opponentEmail],
+          // For existing users: Send both in-app notification and email
+          await Promise.all([
+            createNotification({
+              userIds: [opponentId],
+              type: NotificationType.BET_INVITE,
+              title: "You have been invited to a bet",
+              message: "Join this bet using this link",
+              link: opponentInviteLink,
+              betId: bet.id,
+            }),
+            sendEmail({
+              to: [opponent.email],
               subject: "You have been invited to a bet",
               template: "bet-invite",
-              params: { 
+              params: {
                 link: opponentInviteLink,
-                expiresAt: opponentInvitation.tokenExpiresAt
+                expiresAt: opponentInvitation.tokenExpiresAt,
               },
-            });
-          }
-    
-          if (opponentId) {
-            await createNotification(
-              [opponentId],
-              "BET_INVITE",
-              "You have been invited to a bet",
-              "Join this bet using this link",
-              opponentInviteLink,
-              bet.id
-            );
-          }
+            }),
+          ]);
+        } else if (opponentEmail) {
+          await sendEmail({
+            to: [opponentEmail],
+            subject: "You have been invited to a bet",
+            template: "bet-invitation-new-user",
+            params: {
+              link: opponentInviteLink,
+              expiresAt: opponentInvitation.tokenExpiresAt,
+              registerLink: `${
+                process.env.CLIENT_BASE_URL
+              }/register?email=${encodeURIComponent(opponentEmail)}`,
+            },
+          });
+        }
+        if (opponentEmail) {
+          await sendEmail({
+            to: [opponentEmail],
+            subject: "You have been invited to a bet",
+            template: "bet-invite",
+            params: {
+              link: opponentInviteLink,
+              expiresAt: opponentInvitation.tokenExpiresAt,
+            },
+          });
+        }
+
+        if (opponentId) {
+          await createNotification({
+            userIds: [opponentId],
+            type: NotificationType.BET_INVITE,
+            title: "You have been invited to a bet",
+            message: "Join this bet using this link",
+            link: opponentInviteLink,
+            betId: bet.id,
+          });
+        }
 
         // Create witness records and invitations
         if (input.betType === "WITH_WITNESSES") {
@@ -373,26 +372,41 @@ export class BetService {
             const recipientEmail =
               witness.type === "email" ? witness.value : existingUser?.email;
 
-            if (recipientEmail) {
+            if (existingUser) {
+              // For existing users: Send both in-app notification and email
+              await Promise.all([
+                createNotification({
+                  userIds: [existingUser.id],
+                  type: "WITNESS_INVITE",
+                  title: "You have been invited to witness a bet",
+                  message: "Join this bet as a witness using this link",
+                  link: witnessInviteLink,
+                  betId: bet.id,
+                }),
+                sendEmail({
+                  to: [existingUser.email],
+                  subject: "You have been invited as a witness",
+                  template: "witness-invitation-existing-user",
+                  params: {
+                    link: witnessInviteLink,
+                    expiresAt: witnessRecord.tokenExpiresAt,
+                  },
+                }),
+              ]);
+            } else if (recipientEmail) {
+              // For new users: Send only email with registration link
               await sendEmail({
                 to: [recipientEmail],
                 subject: "You have been invited as a witness",
-                template: "witness-invite",
-                params: { link: witnessInviteLink },
+                template: "witness-invitation-new-user",
+                params: {
+                  link: witnessInviteLink,
+                  expiresAt: witnessRecord.tokenExpiresAt,
+                  registerLink: `${
+                    process.env.CLIENT_BASE_URL
+                  }/register?email=${encodeURIComponent(recipientEmail)}`,
+                },
               });
-            }
-
-            console.log("existing user:", existingUser?.id)
-
-            if (existingUser) {
-              await createNotification(
-                [existingUser.id],
-                "WITNESS_INVITE",
-                "You have been invited to witness a bet",
-                "Join this bet as a witness using this link",
-                witnessInviteLink,
-                bet.id
-              );
             }
           }
         }
