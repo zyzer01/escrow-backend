@@ -1,6 +1,7 @@
 import { betService } from './bet.service';
 import { NextFunction, Request, Response } from "express";
 import { StringConstants } from '../../common/strings';
+import { createBetProvider } from './providers/create-bet.provider';
 
 
 export class BetController {

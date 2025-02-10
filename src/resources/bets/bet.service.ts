@@ -1,6 +1,4 @@
-import { TransactionClient } from "./../../../node_modules/@prisma/client/scripts/default-index.d";
 import { Types } from "mongoose";
-import BetInvitation from "./models/bet-invitation.model";
 import { Bet } from "./models/bet.model";
 import { lockFunds, refundFunds, releaseFunds } from "../escrow/escrow.service";
 import User from "../users/user.model";
@@ -37,312 +35,57 @@ export const OPEN_STATUSES = [
 export const HISTORY_STATUSES = ["closed", "canceled", "settled"] as const;
 
 export class BetService {
-  //   public async createBet(userId: string, input: ICreateBetInput) {
-  //     try {
-  //       if (input.witnesses.length > 0 && input.witnesses.length !== 3) {
-  //         throw new BadRequestException("Exactly 3 witnesses are required");
-  //       }
-
-  //       return await prisma.$transaction(async (tx) => {
-  //         // Fetch creator
-  //         const creator = await tx.user.findUnique({
-  //           where: { id: userId },
-  //           select: { id: true, email: true },
-  //         });
-
-  //         if (!creator) {
-  //           throw new NotFoundException("User not found");
-  //         }
-
-  //         // Handle opponent
-  //         let opponentId: string | null = null;
-  //         let opponentEmail: string | null = null;
-  //         let isOpponentExistingUser = false;
-
-  //         if (input.opponent.type === "user") {
-  //           const opponent = await tx.user.findUnique({
-  //             where: { id: input.opponent.value },
-  //             select: { id: true, email: true },
-  //           });
-
-  //           if (!opponent) {
-  //             throw new NotFoundException("Opponent user not found");
-  //           }
-
-  //           if (opponent.id === userId) {
-  //             throw new BadRequestException("Cannot be your own opponent");
-  //           }
-
-  //           opponentId = opponent.id;
-  //           opponentEmail = opponent.email;
-  //           isOpponentExistingUser = true;
-  //         } else {
-  //           if (!validateEmail(input.opponent.value)) {
-  //             throw new BadRequestException("Invalid opponent email format");
-  //           }
-
-  //           if (input.opponent.value === creator.email) {
-  //             throw new BadRequestException("Cannot be your own opponent");
-  //           }
-
-  //           opponentEmail = input.opponent.value;
-
-  //           // Check if email belongs to an existing user
-  //           const existingUser = await tx.user.findUnique({
-  //             where: { email: opponentEmail },
-  //             select: { id: true },
-  //           });
-
-  //           if (existingUser) {
-  //             opponentId = existingUser.id;
-  //             isOpponentExistingUser = true;
-  //           }
-  //         }
-
-  //         const userWitnessIds = input.witnesses
-  //           .filter((w) => w.type === "user")
-  //           .map((w) => w.value);
-
-  //         if (userWitnessIds.length > 0) {
-  //           const foundWitnessUsers = await tx.user.findMany({
-  //             where: { id: { in: userWitnessIds } },
-  //             select: { id: true },
-  //           });
-
-  //           const missingUserIds = userWitnessIds.filter(
-  //             (id) => !foundWitnessUsers.some((user) => user.id === id)
-  //           );
-
-  //           if (missingUserIds.length > 0) {
-  //             throw new NotFoundException(
-  //               `Witness users not found: ${missingUserIds.join(", ")}`
-  //             );
-  //           }
-  //         }
-
-  //         // Process witnesses
-  //         const witnessEmails = input.witnesses
-  //           .map((w) => (w.type === "email" ? w.value : ""))
-  //           .filter(Boolean);
-  //         const witnessUserIds = input.witnesses
-  //           .map((w) => (w.type === "user" ? w.value : ""))
-  //           .filter(Boolean);
-
-  //         // Validate witness emails/ids don't include creator or opponent
-  //         if (
-  //           [...witnessEmails, ...witnessUserIds].some(
-  //             (w) =>
-  //               w === creator.email ||
-  //               w === opponentEmail ||
-  //               w === creator.id ||
-  //               w === opponentId
-  //           )
-  //         ) {
-  //           throw new BadRequestException(
-  //             "Creator or opponent cannot be witnesses"
-  //           );
-  //         }
-
-  //         // Fetch existing witness users
-  //         const existingWitnessUsers = await tx.user.findMany({
-  //           where: {
-  //             OR: [
-  //               { id: { in: witnessUserIds } },
-  //               { email: { in: witnessEmails } },
-  //             ],
-  //           },
-  //           select: { id: true, email: true },
-  //         });
-
-  //         // Deduct stake from creator's wallet
-  //         await deductWalletBalanceTx(tx, userId, input.creatorStake, "STAKE");
-
-  //         // Create bet
-  //         const bet = await tx.bet.create({
-  //           data: {
-  //             title: input.title,
-  //             description: input.description,
-  //             creatorStake: input.creatorStake,
-  //             opponentStake: input.opponentStake,
-  //             deadline: input.deadline,
-  //             betType: input.betType,
-  //             creatorId: userId,
-  //             opponentId,
-  //             opponentEmail: opponentEmail,
-  //           },
-  //         });
-
-  //         // Create escrow
-  //         await tx.escrow.create({
-  //           data: {
-  //             betId: bet.id,
-  //             creatorId: userId,
-  //             creatorStake: input.creatorStake,
-  //           },
-  //         });
-
-  //         // Generate opponent invitation with token
-  //         const opponentInvitation = await tx.betInvitation.create({
-  //           data: {
-  //             betId: bet.id,
-  //             creatorId: userId,
-  //             invitedUserId: opponentId,
-  //             invitedEmail: opponentId ? null : opponentEmail,
-  //             status: "PENDING",
-  //             token: nanoid(),
-  //             tokenExpiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-  //           },
-  //         });
-
-  //         const opponentInviteLink = `${process.env.CLIENT_BASE_URL}/bet/join/${opponentInvitation.token}`;
-
-  //         // Handle opponent notifications based on user status
-  //         if (isOpponentExistingUser && opponentId) {
-  //           // For existing users: Send both in-app notification and email
-  //           await Promise.all([
-  //             createNotification({
-  //               userId: opponentId,
-  //               type: NotificationType.BET_INVITE,
-  //               title: "You have been invited to a bet",
-  //               message: "Join this bet using this link",
-  //               link: opponentInviteLink,
-  //             }),
-  //             sendEmail({
-  //               to: [opponentEmail!],
-  //               subject: "You have been invited to a bet",
-  //               template: "bet-invite",
-  //               params: {
-  //                 link: opponentInviteLink,
-  //                 expiresAt: opponentInvitation.tokenExpiresAt,
-  //               },
-  //             }),
-  //           ]);
-  //         } else if (opponentEmail) {
-  //           // For new users: Send only email with registration link
-  //           await sendEmail({
-  //             to: opponentEmail,
-  //             subject: "You have been invited to a bet",
-  //             template: "bet-invite",
-  //             params: {
-  //               link: opponentInviteLink,
-  //               expiresAt: opponentInvitation.tokenExpiresAt,
-  //               registerLink: `${
-  //                 process.env.CLIENT_BASE_URL
-  //               }/register?email=${encodeURIComponent(opponentEmail)}`,
-  //             },
-  //           });
-  //         }
-
-  //         // Handle witnesses if required
-  //         if (input.betType === "WITH_WITNESSES") {
-  //           for (const witness of input.witnesses) {
-  //             const existingUser = existingWitnessUsers.find(
-  //               (u) =>
-  //                 (witness.type === "user" && u.id === witness.value) ||
-  //                 (witness.type === "email" && u.email === witness.value)
-  //             );
-
-  //             // Create witness record with tokencreatedBet
-  //             const witnessRecord = await tx.witness.create({
-  //               data: {
-  //                 betId: bet.id,
-  //                 userId: existingUser?.id || null,
-  //                 email:
-  //                   witness.type === "email"
-  //                     ? witness.value
-  //                     : existingUser?.email || null,
-  //                 type: "USER_DESIGNATED",
-  //                 status: "PENDING",
-  //                 token: nanoid(),
-  //                 tokenExpiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-  //               },
-  //             });
-
-  //             const witnessInviteLink = `${process.env.CLIENT_BASE_URL}/witness/join/${witnessRecord.token}`;
-  //             const recipientEmail =
-  //               witness.type === "email" ? witness.value : existingUser?.email;
-
-  //             if (existingUser) {
-  //               // For existing users: Send both in-app notification and email
-  //               await Promise.all([
-  //                 createNotification({
-  //                   userId: existingUser.id,
-  //                   type: "WITNESS_INVITE",
-  //                   title: "You have been invited to witness a bet",
-  //                   message: "Join this bet as a witness using this link",
-  //                   link: witnessInviteLink,
-  //                 }),
-  //                 sendEmail({
-  //                   to: existingUser.email,
-  //                   subject: "You have been invited as a witness",
-  //                   template: "witness-invite",
-  //                   params: {
-  //                     link: witnessInviteLink,
-  //                     expiresAt: witnessRecord.tokenExpiresAt,
-  //                   },
-  //                 }),
-  //               ]);
-  //             } else if (recipientEmail) {
-  //               // For new users: Send only email with registration link
-  //               await sendEmail({
-  //                 to: recipientEmail,
-  //                 subject: "You have been invited as a witness",
-  //                 template: "witness-invite",
-  //                 params: {
-  //                   link: witnessInviteLink,
-  //                   expiresAt: witnessRecord.tokenExpiresAt,
-  //                   registerLink: `${
-  //                     process.env.CLIENT_BASE_URL
-  //                   }/register?email=${encodeURIComponent(recipientEmail)}`,
-  //                 },
-  //               });
-  //             }
-  //           }
-  //         }
-
-  //         return bet;
-  //       });
-  //     } catch (error) {
-  //       throw new Error(String(error));
-  //     }
-  //   }
-
   public async createBet(userId: string, input: ICreateBetInput) {
     try {
+      // Pre-validate input outside the transaction
       if (input.witnesses.length > 0 && input.witnesses.length !== 3) {
         throw new BadRequestException("Exactly 3 witnesses are required");
       }
 
-      return await prisma.$transaction(async (tx) => {
-        // Fetch creator
-        const creator = await tx.user.findUnique({
+      if (!validateEmail(input.opponent.value)) {
+        throw new BadRequestException("Invalid opponent email format");
+      }
+
+      // Collect all user IDs (for type "user")
+      const userIds = [
+        ...(input.opponent.type === "user" ? [input.opponent.value] : []),
+        ...input.witnesses.filter((w) => w.type === "user").map((w) => w.value),
+      ];
+
+      const [creator, existingUsers] = await Promise.all([
+        await prisma.user.findUnique({
           where: { id: userId },
           select: { id: true, email: true },
-        });
+        }),
+        await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, email: true },
+        }),
+      ]);
 
-        if (!creator) {
-          throw new NotFoundException("User not found");
-        }
+      if (!creator) {
+        throw new NotFoundException("User not found");
+      }
 
-        // Handle opponent
-        const { opponentId, opponentEmail, isOpponentExistingUser } =
-          await this.processOpponent(tx, input.opponent, creator);
+      // Validate opponent and witnesses using pre-fetched data
+      const { opponentId, opponentEmail, isOpponentExistingUser } =
+        this.processOpponent(input.opponent, existingUsers, userId);
 
-        // Process witnesses
-        if (input.betType === "WITH_WITNESSES") {
-          await this.validateWitnesses(
-            tx,
-            input.witnesses,
-            creator,
-            opponentId,
-            opponentEmail
-          );
-        }
+      // Process witnesses
+      if (input.betType === "WITH_WITNESSES") {
+        await this.validateWitnesses(
+          input.witnesses,
+          creator,
+          opponentId,
+          opponentEmail,
+          existingUsers
+        );
+      }
 
+      const betResult = await prisma.$transaction(async (tx) => {
         // Deduct stake from creator's wallet
         await deductWalletBalanceTx(tx, userId, input.creatorStake, "STAKE");
 
-        // Create bet
         const bet = await tx.bet.create({
           data: {
             title: input.title,
@@ -353,11 +96,10 @@ export class BetService {
             betType: input.betType,
             creatorId: userId,
             opponentId,
-            opponentEmail: opponentEmail,
-          }
+            opponentEmail,
+          },
         });
 
-        // Create escrow
         await tx.escrow.create({
           data: {
             betId: bet.id,
@@ -366,91 +108,70 @@ export class BetService {
           },
         });
 
-        // Handle opponent invitation
-        await this.createOpponentInvitation(
+        const opponentInvitation = await this.createOpponentInvitation(
           tx,
           bet.id,
           userId,
           opponentId,
-          opponentEmail,
-          isOpponentExistingUser
+          opponentEmail
         );
 
-        // Handle witnesses if required
+        // Create witness invitations (if required)
         if (input.betType === "WITH_WITNESSES") {
-          await this.createWitnessInvitations(tx, bet.id, input.witnesses);
+          await this.createWitnessInvitations(
+            tx,
+            bet.id,
+            input.witnesses,
+            existingUsers
+          );
         }
 
-        return bet;
-      },
-      { timeout: 30000 } 
-    );
+        return { bet, opponentInvitation };
+      });
+
+      return betResult.bet;
     } catch (error) {
       throw new Error(String(error));
     }
   }
 
-  private async processOpponent(
-    tx: Prisma.TransactionClient,
+  private processOpponent(
     opponent: { type: string; value: string },
-    creator: { id: string; email: string }
-  ): Promise<{
+    existingUsers: Array<{ id: string; email: string }>,
+    creatorId: string
+  ): {
     opponentId: string | null;
     opponentEmail: string | null;
     isOpponentExistingUser: boolean;
-  }> {
-    let opponentId: string | null = null;
-    let opponentEmail: string | null = null;
-    let isOpponentExistingUser = false;
+  } {
+    const existingOpponent = existingUsers.find(
+      (u) => u.id === opponent.value || u.email === opponent.value
+    );
 
-    if (opponent.type === "user") {
-      const existingOpponent = await tx.user.findUnique({
-        where: { id: opponent.value },
-        select: { id: true, email: true },
-      });
-
-      if (!existingOpponent) {
-        throw new NotFoundException("Opponent user not found");
-      }
-
-      if (existingOpponent.id === creator.id) {
-        throw new BadRequestException("Cannot be your own opponent");
-      }
-
-      opponentId = existingOpponent.id;
-      opponentEmail = existingOpponent.email;
-      isOpponentExistingUser = true;
-    } else {
-      if (!validateEmail(opponent.value)) {
-        throw new BadRequestException("Invalid opponent email format");
-      }
-
-      if (opponent.value === creator.email) {
-        throw new BadRequestException("Cannot be your own opponent");
-      }
-
-      opponentEmail = opponent.value;
-
-      const existingUser = await tx.user.findUnique({
-        where: { email: opponentEmail },
-        select: { id: true },
-      });
-
-      if (existingUser) {
-        opponentId = existingUser.id;
-        isOpponentExistingUser = true;
-      }
+    if (opponent.type === "user" && !existingOpponent) {
+      throw new NotFoundException("Opponent user not found");
     }
 
-    return { opponentId, opponentEmail, isOpponentExistingUser };
+    if (
+      existingOpponent?.id === creatorId ||
+      existingOpponent?.email === creatorId
+    ) {
+      throw new BadRequestException("Cannot be your own opponent");
+    }
+
+    return {
+      opponentId: existingOpponent?.id || null,
+      opponentEmail: existingOpponent?.email || opponent.value,
+      isOpponentExistingUser: !!existingOpponent,
+    };
   }
 
   private async validateWitnesses(
-    tx: Prisma.TransactionClient,
     witnesses: Array<{ type: string; value: string }>,
     creator: { id: string; email: string },
     opponentId: string | null,
-    opponentEmail: string | null
+    opponentEmail: string | null,
+    existingUsers: Array<{ id: string; email: string }>
   ): Promise<void> {
     const witnessUserIds = witnesses
       .filter((w) => w.type === "user")
@@ -460,22 +181,19 @@ export class BetService {
       .filter((w) => w.type === "email")
       .map((w) => w.value);
 
-    // Validate user-type witnesses exist
-    if (witnessUserIds.length > 0) {
-      const foundWitnessUsers = await tx.user.findMany({
-        where: { id: { in: witnessUserIds } },
-        select: { id: true },
-      });
+    // Validate user-type witnesses exist (using existingUsers)
+    const foundWitnessUserIds = existingUsers
+      .filter((user) => witnessUserIds.includes(user.id))
+      .map((user) => user.id);
 
-      const missingUserIds = witnessUserIds.filter(
-        (id) => !foundWitnessUsers.some((user) => user.id === id)
+    const missingUserIds = witnessUserIds.filter(
+      (id) => !foundWitnessUserIds.includes(id)
+    );
+
+    if (missingUserIds.length > 0) {
+      throw new NotFoundException(
+        `Witness users not found: ${missingUserIds.join(", ")}`
       );
-
-      if (missingUserIds.length > 0) {
-        throw new NotFoundException(
-          `Witness users not found: ${missingUserIds.join(", ")}`
-        );
-      }
     }
 
     // Validate witnesses don't include creator or opponent
@@ -492,15 +210,15 @@ export class BetService {
     }
   }
 
+  // Helper function to create opponent invitation
   private async createOpponentInvitation(
     tx: Prisma.TransactionClient,
     betId: string,
     creatorId: string,
     opponentId: string | null,
-    opponentEmail: string | null,
-    isOpponentExistingUser: boolean
+    opponentEmail: string | null
   ) {
-    const invitation = await tx.betInvitation.create({
+    return await tx.betInvitation.create({
       data: {
         betId,
         creatorId,
@@ -508,12 +226,54 @@ export class BetService {
         invitedEmail: opponentId ? null : opponentEmail,
         status: "PENDING",
         token: nanoid(),
-        tokenExpiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
+  }
 
-    const inviteLink = `${process.env.CLIENT_BASE_URL}/bet/join/${invitation.token}`;
+  private async createWitnessInvitations(
+    tx: Prisma.TransactionClient,
+    betId: string,
+    witnesses: Array<{ type: string; value: string }>,
+    existingUsers: Array<{ id: string; email: string }>
+  ): Promise<void> {
+    const witnessCreations = witnesses.map(async (witness) => {
+      const existingUser = existingUsers.find(
+        (u) => u.id === witness.value || u.email === witness.value
+      );
 
+      return tx.witness.create({
+        data: {
+          betId,
+          userId:
+            witness.type === "user" ? witness.value : existingUser?.id || null,
+          email:
+            witness.type === "email"
+              ? witness.value
+              : existingUser?.email || null,
+          type: "USER_DESIGNATED",
+          status: "PENDING",
+          token: nanoid(),
+          tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+    });
+
+    await Promise.all(witnessCreations);
+  }
+
+  // Helper function to send emails and notifications after the transaction
+  private async sendPostTransactionEmailsAndNotifications(
+    opponentInvitation: BetInvitation,
+    opponentId: string | null,
+    opponentEmail: string | null,
+    isOpponentExistingUser: boolean,
+    witnesses: Array<{ type: string; value: string }>,
+    existingUsers: Array<{ id: string; email: string }>
+  ): Promise<void> {
+    const inviteLink = `${process.env.CLIENT_BASE_URL}/bet/join/${opponentInvitation.token}`;
+
+    // Send opponent invitation
     if (isOpponentExistingUser && opponentId && opponentEmail) {
       await Promise.all([
         createNotification({
@@ -529,7 +289,7 @@ export class BetService {
           template: "bet-invite",
           params: {
             link: inviteLink,
-            expiresAt: invitation.tokenExpiresAt,
+            expiresAt: opponentInvitation.tokenExpiresAt,
           },
         }),
       ]);
@@ -540,7 +300,7 @@ export class BetService {
         template: "bet-invite",
         params: {
           link: inviteLink,
-          expiresAt: invitation.tokenExpiresAt,
+          expiresAt: opponentInvitation.tokenExpiresAt,
           registerLink: `${
             process.env.CLIENT_BASE_URL
           }/register?email=${encodeURIComponent(opponentEmail)}`,
@@ -548,65 +308,17 @@ export class BetService {
       });
     }
 
-    return invitation;
-  }
-
-  private async createWitnessInvitations(
-    tx: Prisma.TransactionClient,
-    betId: string,
-    witnesses: Array<{ type: string; value: string }>
-  ): Promise<void> {
-    // First fetch all existing users in one query
-    const existingWitnessUsers = await tx.user.findMany({
-      where: {
-        OR: [
-          {
-            id: {
-              in: witnesses
-                .filter((w) => w.type === "user")
-                .map((w) => w.value),
-            },
-          },
-          {
-            email: {
-              in: witnesses
-                .filter((w) => w.type === "email")
-                .map((w) => w.value),
-            },
-          },
-        ],
-      },
-      select: { id: true, email: true },
-    });
-
+    // Send witness invitations
     for (const witness of witnesses) {
-      const existingUser = existingWitnessUsers.find(
-        (u) =>
-          (witness.type === "user" && u.id === witness.value) ||
-          (witness.type === "email" && u.email === witness.value)
+      const existingUser = existingUsers.find(
+        (u) => u.id === witness.value || u.email === witness.value
       );
 
-      const witnessRecord = await tx.witness.create({
-        data: {
-          betId,
-          userId:
-            witness.type === "user" ? witness.value : existingUser?.id || null,
-          email:
-            witness.type === "email"
-              ? witness.value
-              : existingUser?.email || null,
-          type: "USER_DESIGNATED",
-          status: "PENDING",
-          token: nanoid(),
-          tokenExpiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        },
-      });
+      const witnessInviteLink = `${
+        process.env.CLIENT_BASE_URL
+      }/witness/join/${nanoid()}`;
 
-      const inviteLink = `${process.env.CLIENT_BASE_URL}/witness/join/${witnessRecord.token}`;
-      const recipientEmail =
-        witness.type === "email" ? witness.value : existingUser?.email;
-
-      if (existingUser) {
+      if (witness.type === "user" && existingUser) {
         await Promise.all([
           createNotification({
             userId: existingUser.id,
@@ -621,21 +333,21 @@ export class BetService {
             template: "witness-invite",
             params: {
               link: inviteLink,
-              expiresAt: witnessRecord.tokenExpiresAt,
+              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             },
           }),
         ]);
-      } else if (recipientEmail) {
+      } else if (witness.type === "email") {
         await sendEmail({
-          to: recipientEmail,
+          to: witness.value,
           subject: "You have been invited as a witness",
           template: "witness-invite",
           params: {
-            link: inviteLink,
-            expiresAt: witnessRecord.tokenExpiresAt,
+            link: witnessInviteLink,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             registerLink: `${
               process.env.CLIENT_BASE_URL
-            }/register?email=${encodeURIComponent(recipientEmail)}`,
+            }/register?email=${encodeURIComponent(witness.value)}`,
           },
         });
       }
@@ -1190,7 +902,7 @@ export class BetService {
       },
       include: {
         witnesses: true,
-      }
+      },
     });
 
     if (!bet) {
