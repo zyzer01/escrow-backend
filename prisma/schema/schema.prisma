@@ -60,6 +60,8 @@ model User {
   escrowCreator     Escrow[] @relation("EscrowCreator")
   escrowOpponent    Escrow[] @relation("EscrowOpponent")
 
+  @@index([email])
+
   @@map("user")
 }
 

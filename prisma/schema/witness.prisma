@@ -19,7 +19,11 @@ model Witness {
   user      User?     @relation(fields: [userId], references: [id])
 
   @@unique([betId, userId])
-  @@index([email, betId, userId])
+
+  @@index([email])
+  @@index([betId])
+  @@index([userId])
+  
   @@map("witness")
 }
 
