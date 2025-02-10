@@ -12,6 +12,7 @@ export enum StringConstants {
   CONFIRM_EMAIL = "Confirm your email",
   OPPONENT_EMAIL_MISSING = "Please Select an opponent",
   CANNOT_BE_OWN_OPPONENT= "You cannot choose yourself as an opponent",
+  CANNOT_ACCEPT_OWN_BET= "You cannot accept your own bet.",
   DISPUTE_ALREADY_OPEN = "Dispute is already open",
   DISPUTE_NOT_FOUND = "Dispute not found",
   EXPIRED_TOKEN= "Token Expired",

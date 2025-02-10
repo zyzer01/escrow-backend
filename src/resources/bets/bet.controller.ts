@@ -1,10 +1,13 @@
-import { betService } from './bet.service';
+import { BetService } from './bet.service';
 import { NextFunction, Request, Response } from "express";
 import { StringConstants } from '../../common/strings';
 import { createBetProvider } from './providers/create-bet.provider';
+import { container } from '../../inversify.config';
 
+const betService = container.get<BetService>(BetService);
 
 export class BetController {
+
 
     public async createBet(req: Request, res: Response, next: NextFunction) {
         const userId = req.user?.id;

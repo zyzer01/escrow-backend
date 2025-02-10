@@ -54,7 +54,7 @@ function routes(app: Application) {
   app.delete('/v1/bets/:betId', authenticateToken, betController.deleteBet)
   app.get('/v1/bets/invitation/:invitationId', authenticateToken, betController.getBetInvitation)
   app.post('/v1/bets/accept', authenticateToken, betController.acceptBetInvitation)
-  app.post('/v1/bets/:invitationId/reject', betController.rejectBetInvitation)
+  app.post('/v1/bets/reject/:invitationId', betController.rejectBetInvitation)
   app.post('/v1/bets/:betId/engage', betController.engageBet)
   app.post('/v1/bets/settle', betController.settleBet)
   app.post('/v1/bets/:betId/cancel', betController.cancelBet)
@@ -62,7 +62,7 @@ function routes(app: Application) {
   app.get('/v1/bets/witness/:betId', authenticateToken, witnessController.getBetWitnesses)
   app.get('/v1/witness/:witnessId', witnessController.getWitnessInvite)
   app.post('/v1/witness/:witnessId/accept', witnessController.witnessAcceptInvite)
-  app.post('/v1/witness/:witnessId/reject', witnessController.witnessRejectInvite)
+  app.post('/v1/witness/reject/:witnessId', witnessController.witnessRejectInvite)
   app.post('/v1/witness/vote', witnessController.castVote)
   app.post('/v1/witness/:witnessId/judge', witnessController.determineWinner)
 

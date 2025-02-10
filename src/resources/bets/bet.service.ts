@@ -29,6 +29,8 @@ import {
   Prisma,
   User,
 } from "@prisma/client";
+import { RejectBetInvitationProvider } from "./providers/reject-bet-invitation.provider";
+import { inject, injectable } from "inversify";
 
 export const OPEN_STATUSES = [
   "pending",
@@ -38,7 +40,13 @@ export const OPEN_STATUSES = [
 ] as const;
 export const HISTORY_STATUSES = ["closed", "canceled", "settled"] as const;
 
+@injectable()
 export class BetService {
+
+  constructor(
+    @inject(RejectBetInvitationProvider) private rejectBetInvitationProvider: RejectBetInvitationProvider,
+  ) {}
+
   public async createBet(userId: string, input: ICreateBetInput) {
     try {
       // Pre-validate input outside the transaction
@@ -443,97 +451,116 @@ export class BetService {
       throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
     }
 
-    return await prisma.$transaction(async (tx) => {
-      // Find invitation with complete bet and creator details
-      const invitation = await tx.betInvitation.findUnique({
-        where: { id: invitationId },
-        include: {
-          bet: {
-            select: {
-              id: true,
-              title: true,
-              creatorId: true,
-              creatorStake: true,
-              opponentId: true,
-              opponentStake: true,
-              status: true,
-              predictions: true,
+    let invitationDetails:
+      | (BetInvitation & {
+          bet: Bet;
+          creator: User;
+        })
+      | null = null;
+
+    try {
+      const updatedBet = await prisma.$transaction(async (tx) => {
+        // Find invitation with complete bet and creator details
+        const invitation = await tx.betInvitation.findUnique({
+          where: { id: invitationId },
+          include: {
+            bet: {
+              select: {
+                id: true,
+                title: true,
+                creatorId: true,
+                creatorStake: true,
+                opponentId: true,
+                opponentStake: true,
+                status: true,
+                predictions: true,
+              },
+            },
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
             },
           },
-          creator: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-            },
+        });
+
+        if (!invitation) {
+          throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
+        }
+
+        if (invitation.status !== "PENDING") {
+          throw new ConflictException(
+            StringConstants.BET_ALREADY_ACCEPTED_REJECTED
+          );
+        }
+
+        const bet = invitation.bet;
+        if (!bet) {
+          throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
+        }
+
+        if (bet.creatorId === userId) {
+          throw new ConflictException(StringConstants.CANNOT_ACCEPT_OWN_BET);
+        }
+
+        // Deduct wallet balance within transaction
+        await deductWalletBalanceTx(tx, userId, opponentStake, "STAKE");
+
+        // Update bet
+        const updatedBet = await tx.bet.update({
+          where: { id: bet.id },
+          data: {
+            opponentStake: opponentStake,
+            opponentId: userId,
+            status: "ACCEPTED",
+            totalStake: opponentStake + bet.creatorStake,
           },
-        },
-      });
+        });
 
-      if (!invitation) {
-        throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
+        await tx.predictions.update({
+          where: { betId: bet.id },
+          data: {
+            opponentPrediction: opponentPrediction,
+          },
+        });
+
+        await tx.betInvitation.update({
+          where: { id: invitationId },
+          data: { status: InvitationStatus.ACCEPTED },
+        });
+
+        await tx.escrow.update({
+          where: {
+            betId: bet.id,
+          },
+          data: {
+            opponentId: userId,
+            opponentStake: opponentStake,
+            status: EscrowStatus.LOCKED,
+          },
+        });
+
+        return updatedBet;
+      });
+      try {
+        if (invitationDetails) {
+          this.sendBetAcceptanceNotifications(invitationDetails);
+        }
+      } catch (notificationError) {
+        // Log notification errors without disrupting the bet acceptance
+        console.error("Bet acceptance notification error:", notificationError);
       }
-
-      if (invitation.status !== "PENDING") {
-        throw new ConflictException(
-          StringConstants.BET_ALREADY_ACCEPTED_REJECTED
-        );
-      }
-
-      const bet = invitation.bet;
-      if (!bet) {
-        throw new NotFoundException(
-          "Bet associated with the invitation not found"
-        );
-      }
-
-      if (bet.creatorId === userId) {
-        throw new ConflictException("You cannot accept your own bet.");
-      }
-
-      // Deduct wallet balance within transaction
-      await deductWalletBalanceTx(tx, userId, opponentStake, "STAKE");
-
-      // Update bet
-      const updatedBet = await tx.bet.update({
-        where: { id: bet.id },
-        data: {
-          opponentStake: opponentStake,
-          opponentId: userId,
-          status: "ACCEPTED",
-          totalStake: opponentStake + bet.creatorStake,
-        },
-      });
-
-      await tx.predictions.update({
-        where: { betId: bet.id },
-        data: {
-          opponentPrediction: opponentPrediction,
-        },
-      });
-
-      await tx.betInvitation.update({
-        where: { id: invitationId },
-        data: { status: InvitationStatus.ACCEPTED },
-      });
-
-      await tx.escrow.update({
-        where: {
-          betId: bet.id
-        },
-        data: {
-          opponentId: userId,
-          opponentStake: opponentStake,
-          status: EscrowStatus.LOCKED,
-        },
-      });
 
       return updatedBet;
-    });
+    } catch (error) {
+      throw new Error("Failed to accept bet");
+    }
   }
 
-  // Separate function to handle notifications and emails after transaction
-  public async handleBetAcceptanceNotifications(
+  // handle notifications and emails after transaction
+  private async sendBetAcceptanceNotifications(
     invitation: BetInvitation & {
       bet: Bet;
       creator: User;
@@ -545,7 +572,7 @@ export class BetService {
       await Promise.all([
         notificationService.createNotification({
           userId: invitation.bet.creatorId,
-          type: NotificationType.BET_ENGAGED,
+          type: NotificationType.BET_INVITE,
           title: "Bet Accepted",
           message: `Your bet "${invitation.bet.title}" has been accepted`,
           params: {
@@ -573,57 +600,8 @@ export class BetService {
    * @param betId - The ID of the bet to reject.
    */
 
-  public async rejectBetInvitation(invitationId: string): Promise<IBet | null> {
-    const invitation = await BetInvitation.findById(invitationId)
-      .populate({
-        path: "betId",
-        select: "title",
-      })
-      .populate({
-        path: "creatorId",
-        select: "name email",
-      });
-
-    if (!invitation) {
-      throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
-    }
-    if (invitation.status !== "pending") {
-      throw new ConflictException(
-        StringConstants.BET_ALREADY_ACCEPTED_REJECTED
-      );
-    }
-
-    invitation.status = "rejected";
-    await invitation.save();
-
-    const bet = invitation.betId;
-    const user = invitation.creatorId;
-
-    try {
-      await notificationService.createNotification(
-        [user._id.toString()],
-        "bet-invite",
-        "Bet Rejected",
-        `Your bet "${bet.title}" to your opponent has been rejected.`,
-        `${process.env.CLIENT_BASE_URL}/bets/${bet._id}`
-      );
-
-      const firstName = user.name.split(" ")[0];
-      await sendEmail({
-        to: user.email,
-        subject: "Your Opponent Rejected The Invite",
-        template: "bet-rejected",
-        params: {
-          firstName: firstName,
-          betTitle: bet.title,
-          betId: bet._id.toString(),
-        },
-      });
-    } catch (error) {
-      console.error("Failed to send email:", error);
-    }
-
-    return invitation;
+  public async rejectBetInvitation(invitationId: string): Promise<any> {
+    return this.rejectBetInvitationProvider.rejectBet(invitationId);
   }
 
   /**

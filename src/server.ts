@@ -1,4 +1,5 @@
 import express, { Application } from 'express';
+import "reflect-metadata";
 import routes from './routes';
 import dotenv from 'dotenv';
 import cors from 'cors';
