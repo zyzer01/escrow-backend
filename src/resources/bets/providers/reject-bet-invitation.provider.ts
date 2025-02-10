@@ -27,15 +27,13 @@ export class RejectBetInvitationProvider {
       );
     }
 
-    const updatedInvitation = await prisma.$transaction(async (tx) => {
-      return await tx.betInvitation.update({
-        where: { id: invitationId },
-        data: { status: InvitationStatus.REJECTED },
-        include: {
-          bet: { select: { id: true, title: true } },
-          creator: { select: { id: true, name: true, email: true } },
-        },
-      });
+    const updatedInvitation = await prisma.betInvitation.update({
+      where: { id: invitationId },
+      data: { status: InvitationStatus.REJECTED },
+      include: {
+        bet: { select: { id: true, title: true } },
+        creator: { select: { id: true, name: true, email: true } },
+      },
     });
 
     // Send notifications after successful transaction

@@ -8,7 +8,5 @@ export interface IUser {
   banned?: boolean | null;
   banReason?: string | null;
   banExpires?: number | bigint | null;
-  createdAt: Date;
-  updatedAt: Date;
   dob?: string | null;
 }

@@ -12,6 +12,7 @@ import {
 } from "../../common/errors";
 import { v4 as uuidv4 } from "uuid";
 import { Prisma } from "@prisma/client";
+import { injectable } from "inversify";
 
 const reference = `WD-${uuidv4()}`;
 
@@ -19,7 +20,8 @@ const headers = {
   Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
 };
 
-class WalletService {
+@injectable()
+export class WalletService {
   public async payoutFunds(
     userId: string,
     amount: number,
@@ -51,27 +53,31 @@ class WalletService {
   }
 
   public async refund(
+    tx: Prisma.TransactionClient,
     userId: string,
     amount: number,
     betId: string
   ): Promise<void> {
-    const userWallet = await Wallet.findOne({ userId });
+    const userWallet = await tx.wallet.upsert({
+      where: { userId },
+      update: { balance: { increment: amount } },
+      create: { userId, balance: amount },
+    });
 
     if (!userWallet) {
-      throw new Error("User wallet not found.");
+      throw new NotFoundException("User wallet not found.");
     }
 
-    userWallet.balance += amount;
-    const transaction = new WalletTransaction({
-      userId,
-      amount,
-      type: "refund",
-      description: `Refund from Bet ID: ${betId}`,
-      betId,
+    await tx.walletTransaction.create({
+      data: {
+        userId,
+        amount,
+        type: "REFUND",
+        description: `Refund from Bet ID: ${betId}`,
+        betId,
+        reference: `refund-${betId}}`,
+      },
     });
-    await transaction.save();
-
-    await userWallet.save();
   }
 
   public async addToUserWallet(

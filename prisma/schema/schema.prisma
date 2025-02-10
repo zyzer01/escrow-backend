@@ -71,15 +71,34 @@ model Profile {
   id           String  @id @default(cuid())
   userId       String  @unique
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    // Betting Stats
   /// @Validator.IsInt()
   /// @Validator.Min(0)
-  totalBets    Int     @default(0)
+  totalBets        Int     @default(0) // Total number of bets placed
+  /// @Validator.IsInt()
+  /// @Validator.Min(0)
+  betsWon          Int     @default(0) // Number of bets won
+  /// @Validator.IsInt()
+  /// @Validator.Min(0)
+  betsLost         Int     @default(0) // Number of bets lost
+  /// @Validator.IsInt()
+  /// @Validator.Min(0)
+  betsPending      Int     @default(0) // Number of pending bets
   /// @Validator.IsFloat()
   /// @Validator.Min(0)
-  totalWagered Float  @default(0.0)
+  totalWagered     Float   @default(0.0) // Total amount wagered
   /// @Validator.IsFloat()
   /// @Validator.Min(0)
-  totalWon     Float   @default(0.0)
+  totalWon         Float   @default(0.0) // Total amount won
+  /// @Validator.IsFloat()
+  /// @Validator.Min(0)
+  totalLost        Float   @default(0.0) // Total amount lost
+  /// @Validator.IsFloat()
+  /// @Validator.Min(0)
+  netProfit        Float   @default(0.0) // Net profit (totalWon - totalLost)
+  /// @Validator.IsInt()
+  /// @Validator.Min(0)
+  betsWitnessed    Int     @default(0) // Number of bets witnessed
   createdAt             DateTime
   updatedAt             DateTime
 
@@ -161,6 +180,7 @@ enum NotificationType {
   BET_SETTLED
   BET_VERIFIED
   BET_DISPUTE
+  BET_CANCELED
   WITNESS_INVITE
   WALLET_WITHDRAWAL
   WALLET_FUNDING

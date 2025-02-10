@@ -1,64 +1,49 @@
+import { User } from "@prisma/client";
 import { prisma } from "../../lib/db";
 import { IUser } from "./interfaces/users";
-
-const allowedFields = ['username', 'email', 'firstName', 'lastName'];
-const MAX_FIELDS = 5;
-
+import { UnauthorizedException } from "../../common/errors";
+import { StringConstants } from "../../common/strings";
 
 export class UserService {
-
-  public async getAllUsers(): Promise<IUser[]> {
+  public async getAll(userId: string): Promise<User[]> {
+    if (!userId) {
+      throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
+    }
     return prisma.user.findMany();
   }
 
-  public async getUserById(userId: string) {
+  public async findUnique(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },
     });
   }
 
-  public async getUser(id: string, fields?: string) {
-    const MAX_FIELDS = 10; // Set a limit for requested fields
-    const allowedFields = ['id', 'username', 'name', 'email', 'image', 'role', 'banned', 'banReason', 'banExpires', 'createdAt'];
-
-    const fieldsArray = fields ? fields.split(',') : [];
-    if (fieldsArray.length > MAX_FIELDS) {
-      throw new Error(`You can request a maximum of ${MAX_FIELDS} fields.`);
-    }
-
-    const selectedFields = fieldsArray
-      .filter(field => allowedFields.includes(field))
-      .reduce((acc, field) => {
-        acc[field] = true;
-        return acc;
-      }, {} as Record<string, boolean>);
-
-    return prisma.user.findUnique({
-      where: { id },
-      select: Object.keys(selectedFields).length ? selectedFields : undefined,
-    });
-  }
-
-  public async createUser(userData: { username?: string; name: string; email: string; image?: string; role?: string }) {
+  public async createUser(userData: User) {
     return prisma.user.create({
       data: {
         username: userData.username,
         name: userData.name,
         email: userData.email,
         image: userData.image,
-        role: userData.role as any,
+        role: userData.role ?? "user",
+        banned: userData.banned ?? false,
+        banReason: userData.banReason,
+        banExpires: userData.banExpires,
+        dob: userData.dob,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     });
   }
-
-  public async updateUser(id: string, userData: Partial<IUser>) {
+  
+  public async update(id: string, userData: Partial<User>) {
     return prisma.user.update({
       where: { id },
       data: userData,
     });
   }
 
-  public async deleteUser(id: string) {
+  public async delete(id: string) {
     return prisma.user.delete({
       where: { id },
     });
@@ -66,7 +51,7 @@ export class UserService {
 
   public async searchUsers(email: string): Promise<Partial<IUser>[] | null> {
     return prisma.user.findMany({
-      where: { email: { contains: email, mode: 'insensitive' } },
+      where: { email: { contains: email, mode: "insensitive" } },
       select: { id: true, email: true, name: true },
       take: 10,
     });
@@ -80,7 +65,6 @@ export class UserService {
 
     return !!user;
   }
-
 }
 
-export const userService = new UserService()
+export const userService = new UserService();

@@ -21,9 +21,9 @@ import { profileController } from './resources/users/profile/profile.controller'
 
 function routes(app: Application) {
   app.get('/v1/users/admin', authenticateToken, authorizeRole('admin'), userController.getAllUsers)
-  app.get('/v1/users', userController.getUsers)
-  app.get('/v1/users/:id', authenticateToken, userController.getUser)
-  app.put('/v1/users/:id', authenticateToken, userController.updateUser)
+  app.get('/v1/users', userController.getAllUsers)
+  app.get('/v1/users/:userId', authenticateToken, userController.getUser)
+  app.put('/v1/users/:userId', authenticateToken, userController.updateUser)
   app.delete('/v1/users/:id', authenticateToken, authorizeRole('admin'), userController.deleteUser)
   app.get('/v1/search-users', userController.searchUsers);
   app.post('/v1/users/check-username', userController.isUsernameTaken)
