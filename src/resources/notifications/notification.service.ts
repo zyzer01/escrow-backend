@@ -11,14 +11,14 @@ export class NotificationService {
     type,
     title,
     message,
-    link,
+    params,
     walletTransactionId,
   }: {
     userId: string;
     type: NotificationType;
-    title: string;
+    title: string; 
     message: string;
-    link?: string;
+    params?: Record<string, any>;
     walletTransactionId?: string;
   }) {
     try {
@@ -28,7 +28,7 @@ export class NotificationService {
           type,
           title,
           message,
-          link,
+          params,
           walletTransactionId,
         },
       })

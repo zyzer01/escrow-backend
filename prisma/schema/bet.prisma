@@ -132,5 +132,7 @@ model Predictions {
   betId              String  @unique
   bet                Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
 
+  @@index([betId])
+
   @@map("prediction")
 }

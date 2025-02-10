@@ -37,6 +37,9 @@ export interface ICreateBetInput {
   description?: string;
   creatorStake: number;
   opponentStake: number;
+  predictions: {
+    creatorPrediction: string;
+  }
   deadline?: Date;
   betType: BetType;
   opponent: {

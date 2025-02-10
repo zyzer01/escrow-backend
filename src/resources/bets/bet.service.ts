@@ -1,15 +1,11 @@
 import { Types } from "mongoose";
-import { Bet } from "./models/bet.model";
 import { lockFunds, refundFunds, releaseFunds } from "../escrow/escrow.service";
-import User from "../users/user.model";
 import { StringConstants } from "../../common/strings";
-import { selectNeutralWitness } from "../../lib/utils/neutralWitness";
 import { NotFoundException } from "../../common/errors/NotFoundException";
 import { BadRequestException } from "../../common/errors/BadRequestException";
 import { ConflictException } from "../../common/errors/ConflictException";
 import { UnprocessableEntityException } from "../../common/errors/UnprocessableEntityException";
 import { sendEmail } from "../../mail/mail.service";
-import Escrow from "../escrow/escrow.model";
 import { UnauthorizedException } from "../../common/errors";
 import {
   createNotification,
@@ -24,7 +20,15 @@ import { prisma } from "../../lib/db";
 import { IBet, ICreateBetInput } from "./interfaces/bet";
 import { validateEmail } from "../../lib/utils/validators";
 import { nanoid } from "nanoid";
-import { BetInvitation, NotificationType, Prisma } from "@prisma/client";
+import {
+  Bet,
+  BetInvitation,
+  EscrowStatus,
+  InvitationStatus,
+  NotificationType,
+  Prisma,
+  User,
+} from "@prisma/client";
 
 export const OPEN_STATUSES = [
   "pending",
@@ -82,6 +86,10 @@ export class BetService {
         );
       }
 
+      if (!input.predictions) {
+        throw new BadRequestException("Creator prediction is required");
+      }
+
       const betResult = await prisma.$transaction(async (tx) => {
         // Deduct stake from creator's wallet
         await deductWalletBalanceTx(tx, userId, input.creatorStake, "STAKE");
@@ -97,6 +105,20 @@ export class BetService {
             creatorId: userId,
             opponentId,
             opponentEmail,
+          },
+          include: {
+            predictions: {
+              select: {
+                creatorPrediction: true,
+              },
+            },
+          },
+        });
+
+        await tx.predictions.create({
+          data: {
+            betId: bet.id,
+            creatorPrediction: input.predictions.creatorPrediction,
           },
         });
 
@@ -128,6 +150,16 @@ export class BetService {
 
         return { bet, opponentInvitation };
       });
+
+      //  Send emails and notifications after the transaction
+      // await this.sendEmailsAndNotifications(
+      //   betResult.opponentInvitation,
+      //   opponentId,
+      //   opponentEmail,
+      //   isOpponentExistingUser,
+      //   input.witnesses,
+      //   existingUsers
+      // );
 
       return betResult.bet;
     } catch (error) {
@@ -173,6 +205,24 @@ export class BetService {
     opponentEmail: string | null,
     existingUsers: Array<{ id: string; email: string }>
   ): Promise<void> {
+    // Normalize witnesses to ensure no duplicates across ID and email
+    const normalizedWitnesses = witnesses
+      .map((witness) => {
+        // If it's a user type, try to find the corresponding email
+        if (witness.type === "user") {
+          const user = existingUsers.find((u) => u.id === witness.value);
+          return user ? [witness.value, user.email] : [witness.value];
+        }
+        return [witness.value];
+      })
+      .flat();
+
+    // Check for duplicate witnesses
+    const uniqueWitnesses = new Set(normalizedWitnesses);
+    if (uniqueWitnesses.size !== normalizedWitnesses.length) {
+      throw new BadRequestException("Witnesses must be unique");
+    }
+
     const witnessUserIds = witnesses
       .filter((w) => w.type === "user")
       .map((w) => w.value);
@@ -210,7 +260,6 @@ export class BetService {
     }
   }
 
-  // Helper function to create opponent invitation
   private async createOpponentInvitation(
     tx: Prisma.TransactionClient,
     betId: string,
@@ -226,7 +275,7 @@ export class BetService {
         invitedEmail: opponentId ? null : opponentEmail,
         status: "PENDING",
         token: nanoid(),
-        tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        tokenExpiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       },
     });
   }
@@ -254,7 +303,7 @@ export class BetService {
           type: "USER_DESIGNATED",
           status: "PENDING",
           token: nanoid(),
-          tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          tokenExpiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
         },
       });
     });
@@ -263,7 +312,7 @@ export class BetService {
   }
 
   // Helper function to send emails and notifications after the transaction
-  private async sendPostTransactionEmailsAndNotifications(
+  private async sendEmailsAndNotifications(
     opponentInvitation: BetInvitation,
     opponentId: string | null,
     opponentEmail: string | null,
@@ -389,108 +438,133 @@ export class BetService {
     invitationId: string,
     opponentStake: number,
     opponentPrediction: string
-  ): Promise<IBet | null> {
+  ): Promise<Bet | null> {
     if (!userId) {
       throw new UnauthorizedException(StringConstants.UNAUTHORIZED);
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      // Find invitation with session to ensure consistency
-      const invitation = await BetInvitation.findById(invitationId)
-        .populate({
-          path: "betId",
-          select: "title creatorId creatorStake opponentId opponentStake",
-        })
-        .populate({
-          path: "creatorId",
-          select: "email name",
-        })
-        .session(session);
+    return await prisma.$transaction(async (tx) => {
+      // Find invitation with complete bet and creator details
+      const invitation = await tx.betInvitation.findUnique({
+        where: { id: invitationId },
+        include: {
+          bet: {
+            select: {
+              id: true,
+              title: true,
+              creatorId: true,
+              creatorStake: true,
+              opponentId: true,
+              opponentStake: true,
+              status: true,
+              predictions: true,
+            },
+          },
+          creator: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      });
 
       if (!invitation) {
         throw new NotFoundException(StringConstants.BET_INVITATION_NOT_FOUND);
       }
 
-      if (invitation.status !== "pending") {
+      if (invitation.status !== "PENDING") {
         throw new ConflictException(
           StringConstants.BET_ALREADY_ACCEPTED_REJECTED
         );
       }
 
-      const bet = invitation.betId;
+      const bet = invitation.bet;
       if (!bet) {
         throw new NotFoundException(
           "Bet associated with the invitation not found"
         );
       }
 
-      // Subtract wallet balance within transaction
-      await subtractWalletBalance(userId, opponentStake, session);
-
-      // Update bet
-      bet.opponentStake = opponentStake;
-      bet.predictions.opponentPrediction = opponentPrediction;
-      bet.status = "accepted";
-      bet.totalStake = opponentStake + bet.creatorStake;
-      await bet.save({ session });
-
-      invitation.status = "accepted";
-      await invitation.save({ session });
-
-      const user = invitation.creatorId;
-
-      await lockFunds(
-        {
-          betId: bet._id,
-          creatorId: bet.creatorId,
-          creatorStake: bet.creatorStake,
-          opponentId: bet.opponentId,
-          opponentStake: bet.opponentStake,
-          status: "locked",
-        },
-        session
-      );
-
-      const betLink = `${process.env.CLIENT_BASE_URL}/bets/${bet._id}`;
-
-      // Create notification and send email before committing transaction
-      try {
-        await Promise.all([
-          notificationService.createNotification(
-            [bet.creatorId],
-            "bet-invite",
-            "Bet Accepted",
-            `Your bet "${bet.title}" has been accepted`,
-            betLink,
-            bet._id,
-            session
-          ),
-          sendEmail({
-            to: user.email,
-            subject: "Bet Accepted",
-            template: "bet-accepted",
-            params: {
-              firstName: user.name,
-              betTitle: bet.title,
-              betId: bet._id.toString(),
-            },
-          }),
-        ]);
-      } catch (error) {
-        await session.abortTransaction();
-        throw new Error("Failed to send notification or email");
+      if (bet.creatorId === userId) {
+        throw new ConflictException("You cannot accept your own bet.");
       }
 
-      await session.commitTransaction();
-      return invitation;
+      // Deduct wallet balance within transaction
+      await deductWalletBalanceTx(tx, userId, opponentStake, "STAKE");
+
+      // Update bet
+      const updatedBet = await tx.bet.update({
+        where: { id: bet.id },
+        data: {
+          opponentStake: opponentStake,
+          opponentId: userId,
+          status: "ACCEPTED",
+          totalStake: opponentStake + bet.creatorStake,
+        },
+      });
+
+      await tx.predictions.update({
+        where: { betId: bet.id },
+        data: {
+          opponentPrediction: opponentPrediction,
+        },
+      });
+
+      await tx.betInvitation.update({
+        where: { id: invitationId },
+        data: { status: InvitationStatus.ACCEPTED },
+      });
+
+      await tx.escrow.update({
+        where: {
+          betId: bet.id
+        },
+        data: {
+          opponentId: userId,
+          opponentStake: opponentStake,
+          status: EscrowStatus.LOCKED,
+        },
+      });
+
+      return updatedBet;
+    });
+  }
+
+  // Separate function to handle notifications and emails after transaction
+  public async handleBetAcceptanceNotifications(
+    invitation: BetInvitation & {
+      bet: Bet;
+      creator: User;
+    }
+  ) {
+    const betLink = `${process.env.CLIENT_BASE_URL}/bets/${invitation.bet.id}`;
+
+    try {
+      await Promise.all([
+        notificationService.createNotification({
+          userId: invitation.bet.creatorId,
+          type: NotificationType.BET_ENGAGED,
+          title: "Bet Accepted",
+          message: `Your bet "${invitation.bet.title}" has been accepted`,
+          params: {
+            link: betLink,
+          },
+        }),
+        sendEmail({
+          to: invitation.creator.email,
+          subject: "Bet Accepted",
+          template: "bet-accepted",
+          params: {
+            firstName: invitation.creator.name,
+            betTitle: invitation.bet.title,
+            betId: invitation.bet.id,
+          },
+        }),
+      ]);
     } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+      console.error("Failed to send notification or email:", error);
     }
   }
 
@@ -901,7 +975,19 @@ export class BetService {
         OR: [{ creatorId: userId }, { opponentId: userId }],
       },
       include: {
-        witnesses: true,
+        predictions: {
+          select: {
+            creatorPrediction: true,
+            opponentPrediction: true,
+          },
+        },
+        witnesses: {
+          select: {
+            betId: true,
+            userId: true,
+            email: true,
+          },
+        },
       },
     });
 
